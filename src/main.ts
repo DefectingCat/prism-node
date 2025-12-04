@@ -117,17 +117,13 @@ async function handleHttpRequest(
     const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
     socksSocket.write(httpRequest);
 
-    // Forward request body if present
+    // Forward request body if present (for POST, PUT, etc.)
     if (req.method !== "GET" && req.method !== "HEAD") {
-      req.pipe(socksSocket, { end: false });
-      req.on("end", () => {
-        socksSocket.end();
-      });
-    } else {
-      socksSocket.end();
+      req.pipe(socksSocket, { end: true });
     }
 
     // Forward response from target server back to client
+    // The socket will receive the HTTP response and pipe it directly to the client
     socksSocket.pipe(res);
 
     // Handle errors
@@ -136,6 +132,8 @@ async function handleHttpRequest(
       if (!res.headersSent) {
         res.writeHead(502, { "Content-Type": "text/plain" });
         res.end("Bad Gateway");
+      } else {
+        res.end();
       }
     });
 
@@ -145,11 +143,18 @@ async function handleHttpRequest(
       if (!res.headersSent) {
         res.writeHead(504, { "Content-Type": "text/plain" });
         res.end("Gateway Timeout");
+      } else {
+        res.end();
       }
     });
 
     req.on("error", (err) => {
       console.error("Client request error:", err.message);
+      socksSocket.destroy();
+    });
+
+    req.on("aborted", () => {
+      console.error("Client request aborted");
       socksSocket.destroy();
     });
   } catch (error) {
