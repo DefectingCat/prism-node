@@ -61,7 +61,111 @@ async function loadConfig(configPath: string): Promise<Config> {
 }
 
 /**
- * Handles HTTP CONNECT requests by establishing a tunnel through SOCKS5 proxy
+ * Handles standard HTTP requests (GET, POST, etc.) by forwarding through SOCKS5 proxy
+ * @param req - HTTP request object
+ * @param res - HTTP response object
+ * @param socksAddr - SOCKS5 proxy server address
+ */
+async function handleHttpRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  socksAddr: ParsedAddress
+): Promise<void> {
+  const url = new URL(req.url || "/", `http://${req.headers.host}`);
+  const targetHost = url.hostname;
+  const targetPort = url.port ? Number.parseInt(url.port, 10) : 80;
+
+  if (!targetHost) {
+    res.writeHead(400, { "Content-Type": "text/plain" });
+    res.end("Bad Request: Missing host");
+    return;
+  }
+
+  try {
+    // Establish connection to target server through SOCKS5 proxy
+    const socksConnection = await SocksClient.createConnection({
+      proxy: {
+        host: socksAddr.host,
+        port: socksAddr.port,
+        type: 5, // SOCKS5 protocol
+      },
+      command: "connect",
+      destination: {
+        host: targetHost,
+        port: targetPort,
+      },
+    });
+
+    const { socket: socksSocket } = socksConnection;
+
+    // Set socket timeout to prevent hanging connections
+    socksSocket.setTimeout(30000);
+
+    // Build HTTP request to send through SOCKS5
+    const path = url.pathname + url.search;
+    const requestLine = `${req.method} ${path} HTTP/${req.httpVersion}\r\n`;
+
+    // Forward headers, but remove proxy-specific headers
+    const headers = { ...req.headers };
+    delete headers["proxy-connection"];
+    delete headers["proxy-authorization"];
+
+    const headerLines = Object.entries(headers)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join("\r\n");
+
+    const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
+    socksSocket.write(httpRequest);
+
+    // Forward request body if present
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      req.pipe(socksSocket, { end: false });
+      req.on("end", () => {
+        socksSocket.end();
+      });
+    } else {
+      socksSocket.end();
+    }
+
+    // Forward response from target server back to client
+    socksSocket.pipe(res);
+
+    // Handle errors
+    socksSocket.on("error", (err) => {
+      console.error("SOCKS socket error (HTTP):", err.message);
+      if (!res.headersSent) {
+        res.writeHead(502, { "Content-Type": "text/plain" });
+        res.end("Bad Gateway");
+      }
+    });
+
+    socksSocket.on("timeout", () => {
+      console.error("SOCKS socket timeout (HTTP)");
+      socksSocket.destroy();
+      if (!res.headersSent) {
+        res.writeHead(504, { "Content-Type": "text/plain" });
+        res.end("Gateway Timeout");
+      }
+    });
+
+    req.on("error", (err) => {
+      console.error("Client request error:", err.message);
+      socksSocket.destroy();
+    });
+  } catch (error) {
+    console.error(
+      "SOCKS connection failed (HTTP):",
+      error instanceof Error ? error.message : String(error)
+    );
+    if (!res.headersSent) {
+      res.writeHead(502, { "Content-Type": "text/plain" });
+      res.end("Bad Gateway");
+    }
+  }
+}
+
+/**
+ * Handles HTTPS CONNECT requests by establishing a secure tunnel through SOCKS5 proxy
  * @param req - HTTP request containing target hostname:port
  * @param clientSocket - Client connection socket
  * @param head - Initial data packet from client
@@ -100,6 +204,10 @@ async function handleConnect(
 
     const { socket: socksSocket } = socksConnection;
 
+    // Set socket timeout to prevent hanging connections
+    socksSocket.setTimeout(60000);
+    clientSocket.setTimeout(60000);
+
     // Notify client that tunnel is established
     clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
 
@@ -114,17 +222,38 @@ async function handleConnect(
 
     // Handle socket errors gracefully
     socksSocket.on("error", (err) => {
-      console.error("SOCKS socket error:", err.message);
-      clientSocket.end();
+      console.error("SOCKS socket error (HTTPS):", err.message);
+      clientSocket.destroy();
     });
 
     clientSocket.on("error", (err) => {
-      console.error("Client socket error:", err.message);
-      socksSocket.end();
+      console.error("Client socket error (HTTPS):", err.message);
+      socksSocket.destroy();
+    });
+
+    socksSocket.on("timeout", () => {
+      console.error("SOCKS socket timeout (HTTPS)");
+      socksSocket.destroy();
+      clientSocket.destroy();
+    });
+
+    clientSocket.on("timeout", () => {
+      console.error("Client socket timeout (HTTPS)");
+      socksSocket.destroy();
+      clientSocket.destroy();
+    });
+
+    // Clean up when either side closes
+    socksSocket.on("close", () => {
+      clientSocket.destroy();
+    });
+
+    clientSocket.on("close", () => {
+      socksSocket.destroy();
     });
   } catch (error) {
     console.error(
-      "SOCKS connection failed:",
+      "SOCKS connection failed (HTTPS):",
       error instanceof Error ? error.message : String(error)
     );
     clientSocket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
@@ -133,20 +262,28 @@ async function handleConnect(
 }
 
 /**
- * Starts the HTTP proxy server
+ * Starts the HTTP proxy server supporting both HTTP and HTTPS traffic
  * @param config - Server configuration with listening and SOCKS5 addresses
  */
 async function startProxy(config: Config): Promise<void> {
   const listenAddr = parseAddress(config.addr);
   const socksAddr = parseAddress(config.socks_addr);
 
-  // Create HTTP server that only accepts CONNECT method for tunneling
-  const server = http.createServer((_req, res) => {
-    res.writeHead(405, { "Content-Type": "text/plain" });
-    res.end("Only CONNECT method is supported");
+  // Create HTTP server that handles standard HTTP requests
+  const server = http.createServer((req, res) => {
+    handleHttpRequest(req, res, socksAddr).catch((error) => {
+      console.error(
+        "Error handling HTTP request:",
+        error instanceof Error ? error.message : String(error)
+      );
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Internal Server Error");
+      }
+    });
   });
 
-  // Handle CONNECT requests for establishing tunnels
+  // Handle HTTPS CONNECT requests for establishing secure tunnels
   server.on("connect", (req, clientSocket: net.Socket, head) => {
     handleConnect(req, clientSocket, head, socksAddr).catch((error) => {
       console.error(
@@ -157,8 +294,9 @@ async function startProxy(config: Config): Promise<void> {
   });
 
   server.listen(listenAddr.port, listenAddr.host, () => {
-    console.log(`HTTP proxy server listening on ${config.addr}`);
+    console.log(`HTTP/HTTPS proxy server listening on ${config.addr}`);
     console.log(`Forwarding to SOCKS5 proxy at ${config.socks_addr}`);
+    console.log("Supports both HTTP and HTTPS traffic");
   });
 
   server.on("error", (error) => {
