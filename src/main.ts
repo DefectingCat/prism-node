@@ -105,10 +105,12 @@ async function handleHttpRequest(
     const path = url.pathname + url.search;
     const requestLine = `${req.method} ${path} HTTP/${req.httpVersion}\r\n`;
 
-    // Forward headers, but remove proxy-specific headers
+    // Forward headers, but remove proxy-specific headers and add Connection: close
     const headers = { ...req.headers };
     delete headers["proxy-connection"];
     delete headers["proxy-authorization"];
+    // Force connection close to ensure response completes properly
+    headers["connection"] = "close";
 
     const headerLines = Object.entries(headers)
       .map(([key, value]) => `${key}: ${value}`)
@@ -123,8 +125,19 @@ async function handleHttpRequest(
     }
 
     // Forward response from target server back to client
-    // The socket will receive the HTTP response and pipe it directly to the client
+    // Pipe the raw HTTP response (headers + body) directly to the client response
     socksSocket.pipe(res);
+
+    // Properly close the response when the socket ends
+    socksSocket.on("end", () => {
+      res.end();
+    });
+
+    socksSocket.on("close", () => {
+      if (!res.writableEnded) {
+        res.end();
+      }
+    });
 
     // Handle errors
     socksSocket.on("error", (err) => {
@@ -132,7 +145,7 @@ async function handleHttpRequest(
       if (!res.headersSent) {
         res.writeHead(502, { "Content-Type": "text/plain" });
         res.end("Bad Gateway");
-      } else {
+      } else if (!res.writableEnded) {
         res.end();
       }
     });
@@ -143,7 +156,7 @@ async function handleHttpRequest(
       if (!res.headersSent) {
         res.writeHead(504, { "Content-Type": "text/plain" });
         res.end("Gateway Timeout");
-      } else {
+      } else if (!res.writableEnded) {
         res.end();
       }
     });
@@ -155,6 +168,11 @@ async function handleHttpRequest(
 
     req.on("aborted", () => {
       console.error("Client request aborted");
+      socksSocket.destroy();
+    });
+
+    // Clean up when client response finishes
+    res.on("finish", () => {
       socksSocket.destroy();
     });
   } catch (error) {
