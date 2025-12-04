@@ -20,6 +20,34 @@ interface ParsedAddress {
   port: number;
 }
 
+// Global request counter for generating unique request IDs
+let requestCounter = 0;
+
+/**
+ * Generates a unique request ID for tracking
+ */
+function generateRequestId(): string {
+  return `${Date.now()}-${++requestCounter}`;
+}
+
+/**
+ * Formats current timestamp for logging
+ */
+function getTimestamp(): string {
+  return new Date().toISOString();
+}
+
+/**
+ * Formats bytes to human-readable format
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
+
 /**
  * Parses an address string into host and port components
  * @param addr - Address string in format "host:port"
@@ -71,17 +99,52 @@ async function handleHttpRequest(
   res: http.ServerResponse,
   socksAddr: ParsedAddress
 ): Promise<void> {
+  const requestId = generateRequestId();
+  const startTime = Date.now();
   const url = new URL(req.url || "/", `http://${req.headers.host}`);
   const targetHost = url.hostname;
   const targetPort = url.port ? Number.parseInt(url.port, 10) : 80;
 
+  let bytesReceived = 0;
+  let bytesSent = 0;
+
+  console.log(
+    `[${getTimestamp()}] [HTTP] [${requestId}] ===== New HTTP Request =====`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTP] [${requestId}] Method: ${req.method}`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTP] [${requestId}] Target: ${targetHost}:${targetPort}`
+  );
+  console.log(`[${getTimestamp()}] [HTTP] [${requestId}] URL: ${url.href}`);
+  console.log(
+    `[${getTimestamp()}] [HTTP] [${requestId}] Client: ${
+      req.socket.remoteAddress
+    }:${req.socket.remotePort}`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTP] [${requestId}] User-Agent: ${
+      req.headers["user-agent"] || "N/A"
+    }`
+  );
+
   if (!targetHost) {
+    console.log(
+      `[${getTimestamp()}] [HTTP] [${requestId}] ERROR: Missing host in request`
+    );
     res.writeHead(400, { "Content-Type": "text/plain" });
     res.end("Bad Request: Missing host");
     return;
   }
 
   try {
+    console.log(
+      `[${getTimestamp()}] [HTTP] [${requestId}] Connecting to SOCKS5 proxy ${
+        socksAddr.host
+      }:${socksAddr.port}...`
+    );
+
     // Establish connection to target server through SOCKS5 proxy
     const socksConnection = await SocksClient.createConnection({
       proxy: {
@@ -97,6 +160,9 @@ async function handleHttpRequest(
     });
 
     const { socket: socksSocket } = socksConnection;
+    console.log(
+      `[${getTimestamp()}] [HTTP] [${requestId}] SOCKS5 connection established successfully`
+    );
 
     // Set socket timeout to prevent hanging connections
     socksSocket.setTimeout(30000);
@@ -119,6 +185,19 @@ async function handleHttpRequest(
     const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
     socksSocket.write(httpRequest);
 
+    console.log(
+      `[${getTimestamp()}] [HTTP] [${requestId}] Request sent to target server`
+    );
+
+    // Track data transfer
+    req.on("data", (chunk) => {
+      bytesSent += chunk.length;
+    });
+
+    socksSocket.on("data", (chunk) => {
+      bytesReceived += chunk.length;
+    });
+
     // Forward request body if present (for POST, PUT, etc.)
     if (req.method !== "GET" && req.method !== "HEAD") {
       req.pipe(socksSocket, { end: true });
@@ -130,18 +209,50 @@ async function handleHttpRequest(
 
     // Properly close the response when the socket ends
     socksSocket.on("end", () => {
+      const duration = Date.now() - startTime;
+      console.log(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Response completed`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Duration: ${duration}ms`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Bytes sent: ${formatBytes(
+          bytesSent
+        )}`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Bytes received: ${formatBytes(
+          bytesReceived
+        )}`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTP] [${requestId}] ===== Request Complete =====\n`
+      );
       res.end();
     });
 
     socksSocket.on("close", () => {
       if (!res.writableEnded) {
+        const duration = Date.now() - startTime;
+        console.log(
+          `[${getTimestamp()}] [HTTP] [${requestId}] Connection closed (duration: ${duration}ms)`
+        );
         res.end();
       }
     });
 
     // Handle errors
     socksSocket.on("error", (err) => {
-      console.error("SOCKS socket error (HTTP):", err.message);
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTP] [${requestId}] SOCKS socket error: ${
+          err.message
+        }`
+      );
+      console.error(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Duration before error: ${duration}ms`
+      );
       if (!res.headersSent) {
         res.writeHead(502, { "Content-Type": "text/plain" });
         res.end("Bad Gateway");
@@ -151,7 +262,10 @@ async function handleHttpRequest(
     });
 
     socksSocket.on("timeout", () => {
-      console.error("SOCKS socket timeout (HTTP)");
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTP] [${requestId}] SOCKS socket timeout after ${duration}ms`
+      );
       socksSocket.destroy();
       if (!res.headersSent) {
         res.writeHead(504, { "Content-Type": "text/plain" });
@@ -162,12 +276,18 @@ async function handleHttpRequest(
     });
 
     req.on("error", (err) => {
-      console.error("Client request error:", err.message);
+      console.error(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Client request error: ${
+          err.message
+        }`
+      );
       socksSocket.destroy();
     });
 
     req.on("aborted", () => {
-      console.error("Client request aborted");
+      console.error(
+        `[${getTimestamp()}] [HTTP] [${requestId}] Client request aborted`
+      );
       socksSocket.destroy();
     });
 
@@ -176,9 +296,14 @@ async function handleHttpRequest(
       socksSocket.destroy();
     });
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error(
-      "SOCKS connection failed (HTTP):",
-      error instanceof Error ? error.message : String(error)
+      `[${getTimestamp()}] [HTTP] [${requestId}] SOCKS connection failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    console.error(
+      `[${getTimestamp()}] [HTTP] [${requestId}] Duration before failure: ${duration}ms`
     );
     if (!res.headersSent) {
       res.writeHead(502, { "Content-Type": "text/plain" });
@@ -200,17 +325,49 @@ async function handleConnect(
   head: Buffer,
   socksAddr: ParsedAddress
 ): Promise<void> {
+  const requestId = generateRequestId();
+  const startTime = Date.now();
+
   // Parse target destination from CONNECT request URL
   const { port, hostname } = new URL(`http://${req.url}`);
   const targetPort = Number.parseInt(port, 10);
 
+  let bytesFromClient = 0;
+  let bytesToClient = 0;
+
+  console.log(
+    `[${getTimestamp()}] [HTTPS] [${requestId}] ===== New HTTPS CONNECT =====`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTPS] [${requestId}] Target: ${hostname}:${targetPort}`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTPS] [${requestId}] Client: ${
+      clientSocket.remoteAddress
+    }:${clientSocket.remotePort}`
+  );
+  console.log(
+    `[${getTimestamp()}] [HTTPS] [${requestId}] Initial data length: ${
+      head.length
+    } bytes`
+  );
+
   if (!hostname || Number.isNaN(targetPort)) {
+    console.error(
+      `[${getTimestamp()}] [HTTPS] [${requestId}] ERROR: Invalid target address`
+    );
     clientSocket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
     clientSocket.end();
     return;
   }
 
   try {
+    console.log(
+      `[${getTimestamp()}] [HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
+        socksAddr.host
+      }:${socksAddr.port}...`
+    );
+
     // Establish connection to target through SOCKS5 proxy
     const socksConnection = await SocksClient.createConnection({
       proxy: {
@@ -226,6 +383,9 @@ async function handleConnect(
     });
 
     const { socket: socksSocket } = socksConnection;
+    console.log(
+      `[${getTimestamp()}] [HTTPS] [${requestId}] SOCKS5 connection established successfully`
+    );
 
     // Set socket timeout to prevent hanging connections
     socksSocket.setTimeout(60000);
@@ -233,11 +393,24 @@ async function handleConnect(
 
     // Notify client that tunnel is established
     clientSocket.write("HTTP/1.1 200 Connection Established\r\n\r\n");
+    console.log(
+      `[${getTimestamp()}] [HTTPS] [${requestId}] Tunnel established, starting data relay`
+    );
 
     // Forward any initial data from CONNECT request
     if (head.length > 0) {
       socksSocket.write(head);
+      bytesFromClient += head.length;
     }
+
+    // Track data transfer
+    clientSocket.on("data", (chunk) => {
+      bytesFromClient += chunk.length;
+    });
+
+    socksSocket.on("data", (chunk) => {
+      bytesToClient += chunk.length;
+    });
 
     // Set up bidirectional data piping between client and SOCKS5 proxy
     socksSocket.pipe(clientSocket);
@@ -245,39 +418,104 @@ async function handleConnect(
 
     // Handle socket errors gracefully
     socksSocket.on("error", (err) => {
-      console.error("SOCKS socket error (HTTPS):", err.message);
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] SOCKS socket error: ${
+          err.message
+        }`
+      );
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Duration: ${duration}ms, Sent: ${formatBytes(
+          bytesFromClient
+        )}, Received: ${formatBytes(bytesToClient)}`
+      );
       clientSocket.destroy();
     });
 
     clientSocket.on("error", (err) => {
-      console.error("Client socket error (HTTPS):", err.message);
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Client socket error: ${
+          err.message
+        }`
+      );
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Duration: ${duration}ms, Sent: ${formatBytes(
+          bytesFromClient
+        )}, Received: ${formatBytes(bytesToClient)}`
+      );
       socksSocket.destroy();
     });
 
     socksSocket.on("timeout", () => {
-      console.error("SOCKS socket timeout (HTTPS)");
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] SOCKS socket timeout after ${duration}ms`
+      );
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Sent: ${formatBytes(
+          bytesFromClient
+        )}, Received: ${formatBytes(bytesToClient)}`
+      );
       socksSocket.destroy();
       clientSocket.destroy();
     });
 
     clientSocket.on("timeout", () => {
-      console.error("Client socket timeout (HTTPS)");
+      const duration = Date.now() - startTime;
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Client socket timeout after ${duration}ms`
+      );
+      console.error(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Sent: ${formatBytes(
+          bytesFromClient
+        )}, Received: ${formatBytes(bytesToClient)}`
+      );
       socksSocket.destroy();
       clientSocket.destroy();
     });
 
     // Clean up when either side closes
     socksSocket.on("close", () => {
+      const duration = Date.now() - startTime;
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] SOCKS socket closed`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Duration: ${duration}ms`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Bytes from client: ${formatBytes(
+          bytesFromClient
+        )}`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Bytes to client: ${formatBytes(
+          bytesToClient
+        )}`
+      );
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] ===== Tunnel Closed =====\n`
+      );
       clientSocket.destroy();
     });
 
     clientSocket.on("close", () => {
+      const duration = Date.now() - startTime;
+      console.log(
+        `[${getTimestamp()}] [HTTPS] [${requestId}] Client socket closed (duration: ${duration}ms)`
+      );
       socksSocket.destroy();
     });
   } catch (error) {
+    const duration = Date.now() - startTime;
     console.error(
-      "SOCKS connection failed (HTTPS):",
-      error instanceof Error ? error.message : String(error)
+      `[${getTimestamp()}] [HTTPS] [${requestId}] SOCKS connection failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    console.error(
+      `[${getTimestamp()}] [HTTPS] [${requestId}] Duration before failure: ${duration}ms`
     );
     clientSocket.write("HTTP/1.1 502 Bad Gateway\r\n\r\n");
     clientSocket.end();
@@ -292,11 +530,15 @@ async function startProxy(config: Config): Promise<void> {
   const listenAddr = parseAddress(config.addr);
   const socksAddr = parseAddress(config.socks_addr);
 
+  console.log(`[${getTimestamp()}] Starting proxy server...`);
+  console.log(`[${getTimestamp()}] Listen address: ${config.addr}`);
+  console.log(`[${getTimestamp()}] SOCKS5 address: ${config.socks_addr}`);
+
   // Create HTTP server that handles standard HTTP requests
   const server = http.createServer((req, res) => {
     handleHttpRequest(req, res, socksAddr).catch((error) => {
       console.error(
-        "Error handling HTTP request:",
+        `[${getTimestamp()}] Error handling HTTP request:`,
         error instanceof Error ? error.message : String(error)
       );
       if (!res.headersSent) {
@@ -310,20 +552,27 @@ async function startProxy(config: Config): Promise<void> {
   server.on("connect", (req, clientSocket: net.Socket, head) => {
     handleConnect(req, clientSocket, head, socksAddr).catch((error) => {
       console.error(
-        "Error handling CONNECT:",
+        `[${getTimestamp()}] Error handling CONNECT:`,
         error instanceof Error ? error.message : String(error)
       );
     });
   });
 
   server.listen(listenAddr.port, listenAddr.host, () => {
-    console.log(`HTTP/HTTPS proxy server listening on ${config.addr}`);
-    console.log(`Forwarding to SOCKS5 proxy at ${config.socks_addr}`);
-    console.log("Supports both HTTP and HTTPS traffic");
+    console.log(`[${getTimestamp()}] ========================================`);
+    console.log(`[${getTimestamp()}] HTTP/HTTPS proxy server is running`);
+    console.log(`[${getTimestamp()}] Listening on: ${config.addr}`);
+    console.log(
+      `[${getTimestamp()}] Forwarding to SOCKS5: ${config.socks_addr}`
+    );
+    console.log(`[${getTimestamp()}] Supports both HTTP and HTTPS traffic`);
+    console.log(
+      `[${getTimestamp()}] ========================================\n`
+    );
   });
 
   server.on("error", (error) => {
-    console.error("Server error:", error.message);
+    console.error(`[${getTimestamp()}] Server error:`, error.message);
     process.exit(1);
   });
 }
@@ -334,11 +583,15 @@ async function startProxy(config: Config): Promise<void> {
 async function main(): Promise<void> {
   try {
     const configPath = path.join(process.cwd(), "config.json");
+    console.log(
+      `[${getTimestamp()}] Loading configuration from ${configPath}...`
+    );
     const config = await loadConfig(configPath);
+    console.log(`[${getTimestamp()}] Configuration loaded successfully`);
     await startProxy(config);
   } catch (error) {
     console.error(
-      "Failed to start proxy:",
+      `[${getTimestamp()}] Failed to start proxy:`,
       error instanceof Error ? error.message : String(error)
     );
     process.exit(1);
