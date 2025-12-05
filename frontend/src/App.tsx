@@ -1,35 +1,43 @@
-import { useState } from 'react';
-import viteLogo from '/vite.svg';
-import reactLogo from './assets/react.svg';
-import './App.css';
+import { useState } from 'react'
+import { Dashboard } from './components/Dashboard'
+import { ApiConfigModal } from './components/ApiConfigModal'
+import { useApiConfig } from './hooks/useApiConfig'
+import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const { config } = useApiConfig()
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank" rel="noreferrer">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button type="button" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p className="text-gray-500 mt-4">
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  );
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <h1 className="text-3xl font-bold text-gray-900">代理服务器统计</h1>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-500">
+                服务器: {config.baseUrl}
+              </span>
+              <button
+                onClick={() => setIsConfigModalOpen(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                配置
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Dashboard />
+      </main>
+      
+      <ApiConfigModal 
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+      />
+    </div>
+  )
 }
 
-export default App;
+export default App

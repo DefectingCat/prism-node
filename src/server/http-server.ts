@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import type { Config } from '../config/types';
 import logger from '../utils/logger';
 import { parseAddress } from '../utils/utils';
@@ -12,6 +13,13 @@ import { createStatsRoutes } from './stats-routes';
  */
 export function createHttpServer(): Hono {
   const app = new Hono();
+
+  // CORS 中间件 - 允许所有域名
+  app.use('*', cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  }));
 
   // 请求日志中间件
   app.use('*', requestLogger);
