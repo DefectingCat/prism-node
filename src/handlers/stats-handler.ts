@@ -9,16 +9,16 @@ import { statsCollector } from '../utils/stats-collector';
 export class StatsHandler {
   /**
    * Retrieves comprehensive proxy statistics with optional filtering
-   * 
+   *
    * Query parameters:
    * - startTime: Filter by start timestamp
-   * - endTime: Filter by end timestamp  
+   * - endTime: Filter by end timestamp
    * - host: Filter by target hostname
    * - type: Filter by connection type (HTTP/HTTPS)
    * - limit: Limit number of records
    * - page: Page number for pagination
    * - pageSize: Records per page
-   * 
+   *
    * @param c - Hono context object
    * @returns JSON response with statistics data and active connections
    */
@@ -88,7 +88,7 @@ export class StatsHandler {
 
   /**
    * Retrieves the current number of active proxy connections
-   * 
+   *
    * @param c - Hono context object
    * @returns JSON response with active connection count
    */

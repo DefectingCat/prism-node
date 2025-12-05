@@ -3,7 +3,7 @@ import winston from 'winston';
 /**
  * Winston logger configuration for the Prism Node proxy application
  * Provides structured logging with file and console outputs
- * 
+ *
  * Features:
  * - JSON format for structured logging
  * - Separate error.log for error-level messages

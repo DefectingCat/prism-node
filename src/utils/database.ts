@@ -165,7 +165,7 @@ class Database {
         record.errorMessage || null,
       ];
 
-      this.db.run(sql, params, function(err) {
+      this.db.run(sql, params, function (err) {
         if (err) {
           logger.error('Failed to insert access record:', err);
           reject(err);
@@ -332,8 +332,6 @@ class Database {
           totalPages: Math.ceil(total / pageSize),
         },
       };
-
-      
 
       return result;
     } catch (error) {
