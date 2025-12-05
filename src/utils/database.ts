@@ -188,6 +188,8 @@ class Database {
       host?: string;
       type?: 'HTTP' | 'HTTPS';
       limit?: number;
+      page?: number;
+      pageSize?: number;
     } = {},
   ): Promise<{
     totalRequests: number;
@@ -196,6 +198,12 @@ class Database {
     avgDuration: number;
     topHosts: Array<{ host: string; count: number; bytes: number }>;
     records: AccessRecord[];
+    pagination?: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
   }> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -253,17 +261,40 @@ class Database {
 
       const topHosts = await allAsync(topHostsSQL, params);
 
-      // 获取详细记录
+      // 处理分页参数
+      const page = options.page || 1;
+      const pageSize = options.pageSize || options.limit || 10;
+      const offset = (page - 1) * pageSize;
+
+      // 获取总记录数（用于分页计算）
+      const countSQL = `SELECT COUNT(*) as total FROM access_logs ${whereClause}`;
+      const countResult = await getAsync(countSQL, params);
+      const total = Number(countResult.total) || 0;
+
+      // 获取详细记录（带分页）
       const recordsSQL = `
         SELECT * FROM access_logs ${whereClause}
         ORDER BY timestamp DESC
-        LIMIT ?
+        LIMIT ? OFFSET ?
       `;
 
-      const recordParams = [...params, options.limit || 100];
+      const recordParams = [...params, pageSize, offset];
       const records = await allAsync(recordsSQL, recordParams);
 
-      return {
+      const result: {
+        totalRequests: number;
+        totalBytesUp: number;
+        totalBytesDown: number;
+        avgDuration: number;
+        topHosts: Array<{ host: string; count: number; bytes: number }>;
+        records: AccessRecord[];
+        pagination: {
+          page: number;
+          pageSize: number;
+          total: number;
+          totalPages: number;
+        };
+      } = {
         totalRequests: Number(stats.totalRequests) || 0,
         totalBytesUp: Number(stats.totalBytesUp) || 0,
         totalBytesDown: Number(stats.totalBytesDown) || 0,
@@ -294,7 +325,17 @@ class Database {
               : undefined,
           }),
         ),
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
       };
+
+      
+
+      return result;
     } catch (error) {
       logger.error('Failed to get stats:', error);
       throw error;

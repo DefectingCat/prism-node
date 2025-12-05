@@ -2,7 +2,26 @@ import type { Context } from 'hono';
 import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
 
+/**
+ * Statistics API handler class
+ * Provides HTTP endpoints for retrieving proxy server statistics and active connection information
+ */
 export class StatsHandler {
+  /**
+   * Retrieves comprehensive proxy statistics with optional filtering
+   * 
+   * Query parameters:
+   * - startTime: Filter by start timestamp
+   * - endTime: Filter by end timestamp  
+   * - host: Filter by target hostname
+   * - type: Filter by connection type (HTTP/HTTPS)
+   * - limit: Limit number of records
+   * - page: Page number for pagination
+   * - pageSize: Records per page
+   * 
+   * @param c - Hono context object
+   * @returns JSON response with statistics data and active connections
+   */
   async getStats(c: Context) {
     try {
       const query = c.req.query();
@@ -13,6 +32,8 @@ export class StatsHandler {
         host?: string;
         type?: 'HTTP' | 'HTTPS';
         limit?: number;
+        page?: number;
+        pageSize?: number;
       } = {};
 
       if (query.startTime) {
@@ -33,6 +54,14 @@ export class StatsHandler {
 
       if (query.limit) {
         options.limit = Number(query.limit);
+      }
+
+      if (query.page) {
+        options.page = Math.max(1, Number(query.page));
+      }
+
+      if (query.pageSize) {
+        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
       }
 
       const stats = await statsCollector.getStats(options);
@@ -57,6 +86,12 @@ export class StatsHandler {
     }
   }
 
+  /**
+   * Retrieves the current number of active proxy connections
+   * 
+   * @param c - Hono context object
+   * @returns JSON response with active connection count
+   */
   async getActiveConnections(c: Context) {
     try {
       const activeConnections = statsCollector.getActiveConnections();

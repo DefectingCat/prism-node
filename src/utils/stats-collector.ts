@@ -145,6 +145,8 @@ export class StatsCollector {
       host?: string;
       type?: 'HTTP' | 'HTTPS';
       limit?: number;
+      page?: number;
+      pageSize?: number;
     } = {},
   ) {
     try {
