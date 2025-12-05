@@ -4,6 +4,17 @@ import { promisify } from 'node:util';
 import sqlite3 from 'sqlite3';
 import logger from './logger';
 
+interface SQLiteRunResult {
+  lastID: number;
+  changes: number;
+}
+
+type SQLiteParam = string | number | null | undefined;
+
+type PromisifiedRun = (sql: string, params?: SQLiteParam[]) => Promise<SQLiteRunResult>;
+type PromisifiedAll = (sql: string, params?: SQLiteParam[]) => Promise<Record<string, SQLiteParam>[]>;
+type PromisifiedGet = (sql: string, params?: SQLiteParam[]) => Promise<Record<string, SQLiteParam>>;
+
 /**
  * 代理访问记录接口
  * 记录每次代理连接的详细信息
@@ -68,10 +79,7 @@ class Database {
   private async createTables(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const runAsync = promisify(this.db.run.bind(this.db)) as (
-      sql: string,
-      params?: any[],
-    ) => Promise<any>;
+    const runAsync = promisify(this.db.run.bind(this.db)) as PromisifiedRun;
 
     // 创建访问日志表
     const createTableSQL = `
@@ -119,10 +127,7 @@ class Database {
   async insertAccessRecord(record: AccessRecord): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const runAsync = promisify(this.db.run.bind(this.db)) as (
-      sql: string,
-      params?: any[],
-    ) => Promise<any>;
+    const runAsync = promisify(this.db.run.bind(this.db)) as PromisifiedRun;
 
     const sql = `
       INSERT INTO access_logs (
@@ -149,7 +154,7 @@ class Database {
 
     try {
       const result = await runAsync(sql, params);
-      return (result as any).lastID;
+      return result.lastID;
     } catch (error) {
       logger.error('Failed to insert access record:', error);
       throw error;
@@ -179,18 +184,12 @@ class Database {
   }> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const allAsync = promisify(this.db.all.bind(this.db)) as (
-      sql: string,
-      params?: any[],
-    ) => Promise<any[]>;
-    const getAsync = promisify(this.db.get.bind(this.db)) as (
-      sql: string,
-      params?: any[],
-    ) => Promise<any>;
+    const allAsync = promisify(this.db.all.bind(this.db)) as PromisifiedAll;
+    const getAsync = promisify(this.db.get.bind(this.db)) as PromisifiedGet;
 
     // 构建查询条件
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
+    const params: SQLiteParam[] = [];
 
     if (options.startTime) {
       whereClause += ' AND timestamp >= ?';
@@ -223,7 +222,7 @@ class Database {
         FROM access_logs ${whereClause}
       `;
 
-      const stats = (await getAsync(statsSQL, params)) as any;
+      const stats = await getAsync(statsSQL, params);
 
       // 获取热门主机
       const topHostsSQL = `
@@ -237,7 +236,7 @@ class Database {
         LIMIT 10
       `;
 
-      const topHosts = (await allAsync(topHostsSQL, params)) as any[];
+      const topHosts = await allAsync(topHostsSQL, params);
 
       // 获取详细记录
       const recordsSQL = `
@@ -247,28 +246,32 @@ class Database {
       `;
 
       const recordParams = [...params, options.limit || 100];
-      const records = (await allAsync(recordsSQL, recordParams)) as any[];
+      const records = await allAsync(recordsSQL, recordParams);
 
       return {
-        totalRequests: stats.totalRequests || 0,
-        totalBytesUp: stats.totalBytesUp || 0,
-        totalBytesDown: stats.totalBytesDown || 0,
-        avgDuration: stats.avgDuration || 0,
-        topHosts: topHosts || [],
-        records: records.map((record) => ({
-          id: record.id,
-          timestamp: record.timestamp,
-          requestId: record.request_id,
-          type: record.type,
-          targetHost: record.target_host,
-          targetPort: record.target_port,
-          clientIP: record.client_ip,
-          userAgent: record.user_agent,
-          duration: record.duration,
-          bytesUp: record.bytes_up,
-          bytesDown: record.bytes_down,
-          status: record.status,
-          errorMessage: record.error_message,
+        totalRequests: Number(stats.totalRequests) || 0,
+        totalBytesUp: Number(stats.totalBytesUp) || 0,
+        totalBytesDown: Number(stats.totalBytesDown) || 0,
+        avgDuration: Number(stats.avgDuration) || 0,
+        topHosts: (topHosts || []).map(host => ({
+          host: String(host.host),
+          count: Number(host.count),
+          bytes: Number(host.bytes)
+        })),
+        records: records.map((record): AccessRecord => ({
+          id: record.id ? Number(record.id) : undefined,
+          timestamp: Number(record.timestamp),
+          requestId: String(record.request_id),
+          type: record.type as 'HTTP' | 'HTTPS',
+          targetHost: String(record.target_host),
+          targetPort: Number(record.target_port),
+          clientIP: String(record.client_ip),
+          userAgent: record.user_agent ? String(record.user_agent) : undefined,
+          duration: Number(record.duration),
+          bytesUp: Number(record.bytes_up),
+          bytesDown: Number(record.bytes_down),
+          status: record.status as 'success' | 'error' | 'timeout',
+          errorMessage: record.error_message ? String(record.error_message) : undefined,
         })),
       };
     } catch (error) {
@@ -284,7 +287,12 @@ class Database {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      this.db!.close((err) => {
+      if (!this.db) {
+        resolve();
+        return;
+      }
+      
+      this.db.close((err) => {
         if (err) {
           logger.error('Failed to close database:', err.message);
           reject(err);
