@@ -287,19 +287,21 @@ class Database {
     if (!this.db) return;
 
     return new Promise((resolve, reject) => {
-      if (!this.db) {
+      const dbToClose = this.db;
+      if (!dbToClose) {
         resolve();
         return;
       }
       
-      this.db.close((err) => {
+      this.db = null; // Set to null immediately to prevent double closing
+      
+      dbToClose.close((err) => {
         if (err) {
           logger.error('Failed to close database:', err);
           reject(err);
           return;
         }
         logger.info('Database connection closed');
-        this.db = null;
         resolve();
       });
     });
