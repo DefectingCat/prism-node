@@ -1,9 +1,9 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import logger from './logger';
+import logger from '../utils/logger';
 import { requestLogger, errorHandler } from './middlewares';
-import type { Config } from './types';
-import { parseAddress } from './utils';
+import type { Config } from '../config/types';
+import { parseAddress } from '../utils/utils';
 
 /**
  * 创建 HTTP 服务器实例

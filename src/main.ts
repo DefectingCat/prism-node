@@ -1,8 +1,8 @@
 import * as path from 'node:path';
-import { loadConfig } from './config';
-import { startHttpServer } from './http-server';
-import logger from './logger';
-import { startProxy } from './proxy-server';
+import { loadConfig } from './config/config';
+import { startHttpServer } from './server/http-server';
+import logger from './utils/logger';
+import { startProxy } from './server/proxy-server';
 
 /**
  * Main entry point - loads configuration and starts both proxy and HTTP servers

@@ -1,5 +1,5 @@
 import type { Context, Next } from 'hono';
-import logger from './logger';
+import logger from '../utils/logger';
 
 /**
  * 请求日志中间件

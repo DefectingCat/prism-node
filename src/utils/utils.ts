@@ -1,4 +1,4 @@
-import type { ParsedAddress } from './types';
+import type { ParsedAddress } from '../config/types';
 
 // Global request counter for generating unique request IDs
 let requestCounter = 0;
