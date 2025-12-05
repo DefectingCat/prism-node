@@ -6,6 +6,7 @@
   "types": "dist/main.d.ts",
   "scripts": {
     "build": "tsc",
+    "build:bin": "pnpm run build && pkg dist/main.js -o prism-node",
     "dev": "ts-node src/main.ts",
     "start": "node dist/main.js",
     "watch": "tsc --watch",
@@ -23,10 +24,13 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
     "@types/node": "^24.10.1",
+    "pkg": "^5.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.6",
+    "hono": "^4.10.7",
     "socks": "^2.8.7"
   }
 }
