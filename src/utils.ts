@@ -1,4 +1,4 @@
-import type { ParsedAddress } from "./types";
+import type { ParsedAddress } from './types';
 
 // Global request counter for generating unique request IDs
 let requestCounter = 0;
@@ -21,11 +21,11 @@ export function getTimestamp(): string {
  * Formats bytes to human-readable format
  */
 export function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  return `${(bytes / k ** i).toFixed(2)} ${sizes[i]}`;
 }
 
 /**
@@ -35,7 +35,7 @@ export function formatBytes(bytes: number): string {
  * @throws Error if address format is invalid
  */
 export function parseAddress(addr: string): ParsedAddress {
-  const [host, portStr] = addr.split(":");
+  const [host, portStr] = addr.split(':');
   const port = Number.parseInt(portStr, 10);
   if (!host || Number.isNaN(port)) {
     throw new Error(`Invalid address format: ${addr}`);

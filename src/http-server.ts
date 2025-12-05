@@ -1,7 +1,8 @@
-import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import type { Config } from "./types";
-import { parseAddress, getTimestamp } from "./utils";
+import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
+import logger from './logger';
+import type { Config } from './types';
+import { parseAddress } from './utils';
 
 /**
  * 创建 HTTP 服务器实例
@@ -11,8 +12,8 @@ export function createHttpServer(): Hono {
   const app = new Hono();
 
   // 健康检查接口
-  app.get("/api/hello", (c) => {
-    return c.text("Hello World");
+  app.get('/api/hello', (c) => {
+    return c.text('Hello World');
   });
 
   return app;
@@ -28,8 +29,8 @@ export async function startHttpServer(config: Config): Promise<void> {
   const httpAddr = parseAddress(config.http_addr);
   const app = createHttpServer();
 
-  console.log(`[${getTimestamp()}] Starting HTTP server...`);
-  console.log(`[${getTimestamp()}] HTTP server address: ${config.http_addr}`);
+  logger.info('Starting HTTP server...');
+  logger.info(`HTTP server address: ${config.http_addr}`);
 
   // 启动服务器
   serve({
@@ -38,5 +39,5 @@ export async function startHttpServer(config: Config): Promise<void> {
     hostname: httpAddr.host,
   });
 
-  console.log(`[${getTimestamp()}] HTTP server is running on: ${config.http_addr}`);
+  logger.info(`HTTP server is running on: ${config.http_addr}`);
 }

@@ -1,6 +1,6 @@
-import * as fs from "node:fs/promises";
-import JSON5 from "json5";
-import type { Config } from "./types";
+import * as fs from 'node:fs/promises';
+import JSON5 from 'json5';
+import type { Config } from './types';
 
 /**
  * Loads and validates configuration from a JSON file (supports comments and trailing commas)
@@ -10,7 +10,7 @@ import type { Config } from "./types";
  */
 export async function loadConfig(configPath: string): Promise<Config> {
   try {
-    const content = await fs.readFile(configPath, "utf-8");
+    const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON5.parse(content) as Config;
 
     // Validate required fields
