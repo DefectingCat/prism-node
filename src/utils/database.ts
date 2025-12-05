@@ -136,38 +136,44 @@ class Database {
   async insertAccessRecord(record: AccessRecord): Promise<number> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const runAsync = promisify(this.db.run.bind(this.db)) as PromisifiedRun;
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
 
-    const sql = `
-      INSERT INTO access_logs (
-        timestamp, request_id, type, target_host, target_port,
-        client_ip, user_agent, duration, bytes_up, bytes_down,
-        status, error_message
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+      const sql = `
+        INSERT INTO access_logs (
+          timestamp, request_id, type, target_host, target_port,
+          client_ip, user_agent, duration, bytes_up, bytes_down,
+          status, error_message
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
 
-    const params = [
-      record.timestamp,
-      record.requestId,
-      record.type,
-      record.targetHost,
-      record.targetPort,
-      record.clientIP,
-      record.userAgent || null,
-      record.duration,
-      record.bytesUp,
-      record.bytesDown,
-      record.status,
-      record.errorMessage || null,
-    ];
+      const params = [
+        record.timestamp,
+        record.requestId,
+        record.type,
+        record.targetHost,
+        record.targetPort,
+        record.clientIP,
+        record.userAgent || null,
+        record.duration,
+        record.bytesUp,
+        record.bytesDown,
+        record.status,
+        record.errorMessage || null,
+      ];
 
-    try {
-      const result = await runAsync(sql, params);
-      return result.lastID;
-    } catch (error) {
-      logger.error('Failed to insert access record:', error);
-      throw error;
-    }
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          logger.error('Failed to insert access record:', err);
+          reject(err);
+          return;
+        }
+        resolve(this.lastID);
+      });
+    });
   }
 
   /**
