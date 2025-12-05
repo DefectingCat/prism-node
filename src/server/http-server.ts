@@ -15,11 +15,14 @@ export function createHttpServer(): Hono {
   const app = new Hono();
 
   // CORS 中间件 - 允许所有域名
-  app.use('*', cors({
-    origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
-  }));
+  app.use(
+    '*',
+    cors({
+      origin: '*',
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+    }),
+  );
 
   // 请求日志中间件
   app.use('*', requestLogger);
