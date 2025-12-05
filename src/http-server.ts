@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import logger from './logger';
+import { requestLogger, errorHandler } from './middlewares';
 import type { Config } from './types';
 import { parseAddress } from './utils';
 
@@ -11,8 +12,15 @@ import { parseAddress } from './utils';
 export function createHttpServer(): Hono {
   const app = new Hono();
 
+  // 请求日志中间件
+  app.use('*', requestLogger);
+
+  // 错误处理中间件
+  app.onError(errorHandler);
+
   // 健康检查接口
   app.get('/api/hello', (c) => {
+    logger.debug('Health check endpoint accessed');
     return c.text('Hello World');
   });
 
@@ -29,15 +37,44 @@ export async function startHttpServer(config: Config): Promise<void> {
   const httpAddr = parseAddress(config.http_addr);
   const app = createHttpServer();
 
-  logger.info('Starting HTTP server...');
-  logger.info(`HTTP server address: ${config.http_addr}`);
-
-  // 启动服务器
-  serve({
-    fetch: app.fetch,
+  logger.info('Starting HTTP server...', {
+    address: config.http_addr,
+    host: httpAddr.host,
     port: httpAddr.port,
-    hostname: httpAddr.host,
   });
 
-  logger.info(`HTTP server is running on: ${config.http_addr}`);
+  try {
+    // 启动服务器
+    const server = serve({
+      fetch: app.fetch,
+      port: httpAddr.port,
+      hostname: httpAddr.host,
+    });
+
+    logger.info('HTTP server started successfully', {
+      address: config.http_addr,
+      host: httpAddr.host,
+      port: httpAddr.port,
+      pid: process.pid,
+    });
+
+    // 监听进程退出事件
+    process.on('SIGTERM', () => {
+      logger.info('Received SIGTERM, shutting down HTTP server gracefully');
+      server.close?.();
+    });
+
+    process.on('SIGINT', () => {
+      logger.info('Received SIGINT, shutting down HTTP server gracefully');
+      server.close?.();
+    });
+
+  } catch (error) {
+    logger.error('Failed to start HTTP server', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      address: config.http_addr,
+    });
+    throw error;
+  }
 }
