@@ -9,7 +9,8 @@ export async function requestLogger(c: Context, next: Next) {
   const method = c.req.method;
   const url = c.req.url;
   const userAgent = c.req.header('user-agent') || 'unknown';
-  const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+  const ip =
+    c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
 
   logger.info('HTTP Request', {
     method,

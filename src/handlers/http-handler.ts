@@ -3,6 +3,7 @@ import { SocksClient } from 'socks';
 import logger from '../utils/logger';
 import type { ParsedAddress } from '../config/types';
 import { formatBytes, generateRequestId } from '../utils/utils';
+import { statsCollector } from '../utils/stats-collector';
 
 /**
  * Handles standard HTTP requests (GET, POST, etc.) by forwarding through SOCKS5 proxy
@@ -37,8 +38,21 @@ export async function handleHttpRequest(
     `[HTTP] [${requestId}] User-Agent: ${req.headers['user-agent'] || 'N/A'}`,
   );
 
+  // 开始统计收集
+  statsCollector.startConnection(requestId, {
+    type: 'HTTP',
+    targetHost,
+    targetPort,
+    clientIP: req.socket.remoteAddress || 'unknown',
+    userAgent: req.headers['user-agent'] as string,
+  });
+
   if (!targetHost) {
     logger.error(`[HTTP] [${requestId}] ERROR: Missing host in request`);
+    await statsCollector.endConnection(requestId, {
+      status: 'error',
+      errorMessage: 'Missing host in request',
+    });
     res.writeHead(400, { 'Content-Type': 'text/plain' });
     res.end('Bad Request: Missing host');
     return;
@@ -96,10 +110,12 @@ export async function handleHttpRequest(
     // Track data transfer
     req.on('data', (chunk) => {
       bytesSent += chunk.length;
+      statsCollector.addBytesUp(requestId, chunk.length);
     });
 
     socksSocket.on('data', (chunk) => {
       bytesReceived += chunk.length;
+      statsCollector.addBytesDown(requestId, chunk.length);
     });
 
     // Forward request body if present (for POST, PUT, etc.)
@@ -123,6 +139,8 @@ export async function handleHttpRequest(
         `[HTTP] [${requestId}] Bytes received: ${formatBytes(bytesReceived)}`,
       );
       logger.info(`[HTTP] [${requestId}] ===== Request Complete =====\n`);
+
+      statsCollector.endConnection(requestId, { status: 'success' });
       res.end();
     });
 
@@ -132,6 +150,7 @@ export async function handleHttpRequest(
         logger.info(
           `[HTTP] [${requestId}] Connection closed (duration: ${duration}ms)`,
         );
+        statsCollector.endConnection(requestId, { status: 'success' });
         res.end();
       }
     });
@@ -143,6 +162,10 @@ export async function handleHttpRequest(
       logger.error(
         `[HTTP] [${requestId}] Duration before error: ${duration}ms`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'error',
+        errorMessage: err.message,
+      });
       if (!res.headersSent) {
         res.writeHead(502, { 'Content-Type': 'text/plain' });
         res.end('Bad Gateway');
@@ -156,6 +179,10 @@ export async function handleHttpRequest(
       logger.error(
         `[HTTP] [${requestId}] SOCKS socket timeout after ${duration}ms`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'timeout',
+        errorMessage: `Socket timeout after ${duration}ms`,
+      });
       socksSocket.destroy();
       if (!res.headersSent) {
         res.writeHead(504, { 'Content-Type': 'text/plain' });
@@ -191,6 +218,10 @@ export async function handleHttpRequest(
     logger.error(
       `[HTTP] [${requestId}] Duration before failure: ${duration}ms`,
     );
+    await statsCollector.endConnection(requestId, {
+      status: 'error',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     if (!res.headersSent) {
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end('Bad Gateway');

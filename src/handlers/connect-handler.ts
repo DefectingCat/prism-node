@@ -4,6 +4,7 @@ import { SocksClient } from 'socks';
 import logger from '../utils/logger';
 import type { ParsedAddress } from '../config/types';
 import { formatBytes, generateRequestId } from '../utils/utils';
+import { statsCollector } from '../utils/stats-collector';
 
 /**
  * Handles HTTPS CONNECT requests by establishing a secure tunnel through SOCKS5 proxy
@@ -39,8 +40,20 @@ export async function handleConnect(
     `[HTTPS] [${requestId}] Initial data length: ${head.length} bytes`,
   );
 
+  // 开始统计收集
+  statsCollector.startConnection(requestId, {
+    type: 'HTTPS',
+    targetHost: hostname,
+    targetPort,
+    clientIP: clientSocket.remoteAddress || 'unknown',
+  });
+
   if (!hostname || Number.isNaN(targetPort)) {
     logger.error(`[HTTPS] [${requestId}] ERROR: Invalid target address`);
+    await statsCollector.endConnection(requestId, {
+      status: 'error',
+      errorMessage: 'Invalid target address',
+    });
     clientSocket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
     clientSocket.end();
     return;
@@ -86,15 +99,18 @@ export async function handleConnect(
     if (head.length > 0) {
       socksSocket.write(head);
       bytesFromClient += head.length;
+      statsCollector.addBytesUp(requestId, head.length);
     }
 
     // Track data transfer
     clientSocket.on('data', (chunk) => {
       bytesFromClient += chunk.length;
+      statsCollector.addBytesUp(requestId, chunk.length);
     });
 
     socksSocket.on('data', (chunk) => {
       bytesToClient += chunk.length;
+      statsCollector.addBytesDown(requestId, chunk.length);
     });
 
     // Set up bidirectional data piping between client and SOCKS5 proxy
@@ -110,6 +126,10 @@ export async function handleConnect(
           bytesFromClient,
         )}, Received: ${formatBytes(bytesToClient)}`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'error',
+        errorMessage: err.message,
+      });
       clientSocket.destroy();
     });
 
@@ -123,6 +143,10 @@ export async function handleConnect(
           bytesFromClient,
         )}, Received: ${formatBytes(bytesToClient)}`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'error',
+        errorMessage: err.message,
+      });
       socksSocket.destroy();
     });
 
@@ -136,6 +160,10 @@ export async function handleConnect(
           bytesFromClient,
         )}, Received: ${formatBytes(bytesToClient)}`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'timeout',
+        errorMessage: `Socket timeout after ${duration}ms`,
+      });
       socksSocket.destroy();
       clientSocket.destroy();
     });
@@ -150,6 +178,10 @@ export async function handleConnect(
           bytesFromClient,
         )}, Received: ${formatBytes(bytesToClient)}`,
       );
+      statsCollector.endConnection(requestId, {
+        status: 'timeout',
+        errorMessage: `Client timeout after ${duration}ms`,
+      });
       socksSocket.destroy();
       clientSocket.destroy();
     });
@@ -168,6 +200,8 @@ export async function handleConnect(
         `[HTTPS] [${requestId}] Bytes to client: ${formatBytes(bytesToClient)}`,
       );
       logger.info(`[HTTPS] [${requestId}] ===== Tunnel Closed =====\n`);
+
+      statsCollector.endConnection(requestId, { status: 'success' });
       clientSocket.destroy();
     });
 
@@ -176,6 +210,7 @@ export async function handleConnect(
       logger.info(
         `[HTTPS] [${requestId}] Client socket closed (duration: ${duration}ms)`,
       );
+      statsCollector.endConnection(requestId, { status: 'success' });
       socksSocket.destroy();
     });
   } catch (error) {
@@ -188,6 +223,10 @@ export async function handleConnect(
     logger.error(
       `[HTTPS] [${requestId}] Duration before failure: ${duration}ms`,
     );
+    await statsCollector.endConnection(requestId, {
+      status: 'error',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     clientSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
     clientSocket.end();
   }

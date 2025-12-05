@@ -68,7 +68,6 @@ export async function startHttpServer(config: Config): Promise<void> {
       logger.info('Received SIGINT, shutting down HTTP server gracefully');
       server.close?.();
     });
-
   } catch (error) {
     logger.error('Failed to start HTTP server', {
       error: error instanceof Error ? error.message : String(error),

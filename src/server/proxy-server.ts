@@ -5,6 +5,7 @@ import { handleHttpRequest } from '../handlers/http-handler';
 import logger from '../utils/logger';
 import type { Config } from '../config/types';
 import { parseAddress } from '../utils/utils';
+import { statsCollector } from '../utils/stats-collector';
 
 /**
  * Starts the HTTP proxy server supporting both HTTP and HTTPS traffic
@@ -17,6 +18,9 @@ export async function startProxy(config: Config): Promise<void> {
   logger.info(`Starting proxy server...`);
   logger.info(`Listen address: ${config.addr}`);
   logger.info(`SOCKS5 address: ${config.socks_addr}`);
+
+  // 初始化统计收集器
+  await statsCollector.initialize();
 
   // Create HTTP server that handles standard HTTP requests
   const server = http.createServer((req, res) => {
@@ -55,4 +59,14 @@ export async function startProxy(config: Config): Promise<void> {
     logger.error(`Server error:`, error.message);
     process.exit(1);
   });
+
+  // 处理进程退出信号
+  const gracefulShutdown = async (signal: string) => {
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+    await statsCollector.close();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
