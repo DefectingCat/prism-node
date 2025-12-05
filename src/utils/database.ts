@@ -294,7 +294,7 @@ class Database {
       
       this.db.close((err) => {
         if (err) {
-          logger.error('Failed to close database:', err.message);
+          logger.error('Failed to close database:', err);
           reject(err);
           return;
         }
