@@ -11,9 +11,18 @@ interface SQLiteRunResult {
 
 type SQLiteParam = string | number | null | undefined;
 
-type PromisifiedRun = (sql: string, params?: SQLiteParam[]) => Promise<SQLiteRunResult>;
-type PromisifiedAll = (sql: string, params?: SQLiteParam[]) => Promise<Record<string, SQLiteParam>[]>;
-type PromisifiedGet = (sql: string, params?: SQLiteParam[]) => Promise<Record<string, SQLiteParam>>;
+type PromisifiedRun = (
+  sql: string,
+  params?: SQLiteParam[],
+) => Promise<SQLiteRunResult>;
+type PromisifiedAll = (
+  sql: string,
+  params?: SQLiteParam[],
+) => Promise<Record<string, SQLiteParam>[]>;
+type PromisifiedGet = (
+  sql: string,
+  params?: SQLiteParam[],
+) => Promise<Record<string, SQLiteParam>>;
 
 /**
  * 代理访问记录接口
@@ -253,26 +262,32 @@ class Database {
         totalBytesUp: Number(stats.totalBytesUp) || 0,
         totalBytesDown: Number(stats.totalBytesDown) || 0,
         avgDuration: Number(stats.avgDuration) || 0,
-        topHosts: (topHosts || []).map(host => ({
+        topHosts: (topHosts || []).map((host) => ({
           host: String(host.host),
           count: Number(host.count),
-          bytes: Number(host.bytes)
+          bytes: Number(host.bytes),
         })),
-        records: records.map((record): AccessRecord => ({
-          id: record.id ? Number(record.id) : undefined,
-          timestamp: Number(record.timestamp),
-          requestId: String(record.request_id),
-          type: record.type as 'HTTP' | 'HTTPS',
-          targetHost: String(record.target_host),
-          targetPort: Number(record.target_port),
-          clientIP: String(record.client_ip),
-          userAgent: record.user_agent ? String(record.user_agent) : undefined,
-          duration: Number(record.duration),
-          bytesUp: Number(record.bytes_up),
-          bytesDown: Number(record.bytes_down),
-          status: record.status as 'success' | 'error' | 'timeout',
-          errorMessage: record.error_message ? String(record.error_message) : undefined,
-        })),
+        records: records.map(
+          (record): AccessRecord => ({
+            id: record.id ? Number(record.id) : undefined,
+            timestamp: Number(record.timestamp),
+            requestId: String(record.request_id),
+            type: record.type as 'HTTP' | 'HTTPS',
+            targetHost: String(record.target_host),
+            targetPort: Number(record.target_port),
+            clientIP: String(record.client_ip),
+            userAgent: record.user_agent
+              ? String(record.user_agent)
+              : undefined,
+            duration: Number(record.duration),
+            bytesUp: Number(record.bytes_up),
+            bytesDown: Number(record.bytes_down),
+            status: record.status as 'success' | 'error' | 'timeout',
+            errorMessage: record.error_message
+              ? String(record.error_message)
+              : undefined,
+          }),
+        ),
       };
     } catch (error) {
       logger.error('Failed to get stats:', error);
@@ -292,9 +307,9 @@ class Database {
         resolve();
         return;
       }
-      
+
       this.db = null; // Set to null immediately to prevent double closing
-      
+
       dbToClose.close((err) => {
         if (err) {
           logger.error('Failed to close database:', err);

@@ -4,6 +4,7 @@ import type { Config } from '../config/types';
 import logger from '../utils/logger';
 import { parseAddress } from '../utils/utils';
 import { errorHandler, requestLogger } from './middlewares';
+import { createStatsRoutes } from './stats-routes';
 
 /**
  * 创建 HTTP 服务器实例
@@ -23,6 +24,9 @@ export function createHttpServer(): Hono {
     logger.debug('Health check endpoint accessed');
     return c.text('Hello World');
   });
+
+  // 统计信息接口
+  app.route('/api', createStatsRoutes());
 
   return app;
 }
