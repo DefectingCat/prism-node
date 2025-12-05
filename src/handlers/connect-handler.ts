@@ -1,10 +1,10 @@
 import type * as http from 'node:http';
 import type * as net from 'node:net';
 import { SocksClient } from 'socks';
-import logger from '../utils/logger';
 import type { ParsedAddress } from '../config/types';
-import { formatBytes, generateRequestId } from '../utils/utils';
+import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
+import { formatBytes, generateRequestId } from '../utils/utils';
 
 /**
  * Handles HTTPS CONNECT requests by establishing a secure tunnel through SOCKS5 proxy

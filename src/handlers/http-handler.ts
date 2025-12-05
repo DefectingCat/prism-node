@@ -1,9 +1,9 @@
 import type * as http from 'node:http';
 import { SocksClient } from 'socks';
-import logger from '../utils/logger';
 import type { ParsedAddress } from '../config/types';
-import { formatBytes, generateRequestId } from '../utils/utils';
+import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
+import { formatBytes, generateRequestId } from '../utils/utils';
 
 /**
  * Handles standard HTTP requests (GET, POST, etc.) by forwarding through SOCKS5 proxy

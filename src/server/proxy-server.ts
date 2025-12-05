@@ -1,11 +1,11 @@
 import * as http from 'node:http';
 import type * as net from 'node:net';
+import type { Config } from '../config/types';
 import { handleConnect } from '../handlers/connect-handler';
 import { handleHttpRequest } from '../handlers/http-handler';
 import logger from '../utils/logger';
-import type { Config } from '../config/types';
-import { parseAddress } from '../utils/utils';
 import { statsCollector } from '../utils/stats-collector';
+import { parseAddress } from '../utils/utils';
 
 /**
  * Starts the HTTP proxy server supporting both HTTP and HTTPS traffic

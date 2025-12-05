@@ -1,4 +1,4 @@
-import { database, type AccessRecord } from './database';
+import { type AccessRecord, database } from './database';
 import logger from './logger';
 
 /**

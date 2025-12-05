@@ -15,6 +15,12 @@
       "!**/coverage"
     ]
   },
+  "json": {
+    "parser": {
+      "allowComments": true,
+      "allowTrailingCommas": true
+    }
+  },
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
