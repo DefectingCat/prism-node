@@ -2,6 +2,7 @@
   "name": "prism-node",
   "version": "0.1.0",
   "description": "",
+  "type": "module",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {

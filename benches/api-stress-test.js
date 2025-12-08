@@ -1,17 +1,32 @@
 #!/usr/bin/env node
 
-const http = require('node:http');
-const https = require('node:https');
-const { performance } = require('node:perf_hooks');
-const url = require('node:url');
+import http from 'node:http';
+import https from 'node:https';
+import { performance } from 'node:perf_hooks';
+
 
 class StressTest {
   constructor(options = {}) {
-    this.baseUrl = options.baseUrl || 'http://localhost:3000';
+    // 解析基础URL，提取主机部分和路径部分
+    const baseUrl = options.baseUrl || 'http://localhost:3000';
+    const baseUrlObj = new URL(baseUrl);
+
+    // 基础URL的主机部分（协议+主机+端口）
+    this.baseHost = `${baseUrlObj.protocol}//${baseUrlObj.host}`;
+
+    // 基础URL的路径部分
+    this.basePath = baseUrlObj.pathname;
+
     this.concurrency = options.concurrency || 10;
     this.totalRequests = options.totalRequests || 100;
     this.timeout = options.timeout || 5000;
-    this.endpoints = options.endpoints || ['/'];
+
+    // 如果基础URL包含路径，且没有指定端点，则使用基础URL的路径作为端点
+    if (this.basePath && this.basePath !== '/' && (!options.endpoints || options.endpoints.length === 0 || (options.endpoints.length === 1 && options.endpoints[0] === '/'))) {
+      this.endpoints = [this.basePath];
+    } else {
+      this.endpoints = options.endpoints || ['/'];
+    }
 
     this.results = {
       totalRequests: 0,
@@ -28,14 +43,33 @@ class StressTest {
   async makeRequest(endpoint) {
     return new Promise((resolve) => {
       const startTime = performance.now();
-      const targetUrl = this.baseUrl + endpoint;
-      const parsedUrl = url.parse(targetUrl);
+
+      // 构建目标 URL
+      let targetUrl;
+      if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        // 如果 endpoint 已经是完整 URL，直接使用
+        targetUrl = endpoint;
+      } else {
+        // 如果 endpoint 以 / 开头，则相对于主机
+        // 否则相对于基础路径
+        if (endpoint.startsWith('/')) {
+          targetUrl = `${this.baseHost}${endpoint}`;
+        } else {
+          // 移除基础路径末尾的斜杠（如果有）
+          const basePath = this.basePath.endsWith('/')
+            ? this.basePath.slice(0, -1)
+            : this.basePath;
+          targetUrl = `${this.baseHost}${basePath}/${endpoint}`;
+        }
+      }
+
+      const parsedUrl = new URL(targetUrl);
       const client = parsedUrl.protocol === 'https:' ? https : http;
 
       const options = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port,
-        path: parsedUrl.path,
+        path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
         timeout: this.timeout,
         headers: {
@@ -133,7 +167,10 @@ class StressTest {
 
   async run() {
     console.log(`开始压力测试:`);
-    console.log(`目标URL: ${this.baseUrl}`);
+    console.log(`基础主机: ${this.baseHost}`);
+    if (this.basePath && this.basePath !== '/') {
+      console.log(`基础路径: ${this.basePath}`);
+    }
     console.log(`并发数: ${this.concurrency}`);
     console.log(`总请求数: ${this.totalRequests}`);
     console.log(`测试端点: ${this.endpoints.join(', ')}`);
@@ -143,7 +180,21 @@ class StressTest {
     let completedRequests = 0;
 
     for (const endpoint of this.endpoints) {
-      console.log(`\n测试端点: ${endpoint}`);
+      // 显示完整的请求 URL
+      let requestUrl;
+      if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+        requestUrl = endpoint;
+      } else {
+        if (endpoint.startsWith('/')) {
+          requestUrl = `${this.baseHost}${endpoint}`;
+        } else {
+          const basePath = this.basePath.endsWith('/')
+            ? this.basePath.slice(0, -1)
+            : this.basePath;
+          requestUrl = `${this.baseHost}${basePath}/${endpoint}`;
+        }
+      }
+      console.log(`\n测试端点: ${requestUrl}`);
 
       const requestsPerEndpoint = Math.floor(
         this.totalRequests / this.endpoints.length,
@@ -255,16 +306,39 @@ API 压力测试工具
 用法: node api-stress-test.js [选项]
 
 选项:
-  -u, --url <url>           目标服务器URL (默认: http://localhost:3000)
+  -u, --url <url>           基础服务器URL (默认: http://localhost:3000)
+                            可以是：
+                            - 仅包含协议、主机和端口（如 http://localhost:3000）
+                            - 包含完整路径（如 http://localhost:3000/api/stats）
   -c, --concurrency <num>   并发连接数 (默认: 10)
   -r, --requests <num>      总请求数 (默认: 100)
   -t, --timeout <ms>        请求超时时间 (默认: 5000ms)
-  -e, --endpoints <list>    测试端点列表，用逗号分隔 (默认: /)
+  -e, --endpoints <list>    测试端点列表，用逗号分隔
+                            如果不指定，当基础URL包含路径时，会自动使用该路径
+                            端点可以是：
+                            - 绝对路径（如 /api/stats）
+                            - 相对于基础URL的路径（如 stats，当基础URL包含路径时）
+                            - 完整URL（如 http://example.com/api/stats）
   -h, --help               显示帮助信息
 
-示例:
-  node api-stress-test.js -u http://localhost:8080 -c 20 -r 1000
-  node api-stress-test.js -e "/api/users,/api/posts,/api/comments"
+使用方式：
+1. 直接测试包含路径的基础URL（推荐）：
+   node api-stress-test.js -u http://localhost:3000/api/stats -c 10 -r 1000
+
+2. 测试基础URL下的多个端点：
+   node api-stress-test.js -u http://localhost:3000 -e "/api/stats,/api/hello" -c 20 -r 1000
+
+3. 测试相对路径：
+   node api-stress-test.js -u http://localhost:3000/api -e "stats,hello" -c 10 -r 500
+
+4. 直接测试完整URL：
+   node api-stress-test.js -e "http://localhost:3000/api/stats" -c 5 -r 100
+
+5. 测试默认端点（根路径）：
+   node api-stress-test.js -u http://localhost:3000 -c 10 -r 100
+
+6. 测试不同服务器的端点：
+   node api-stress-test.js -e "http://api1.example.com/endpoint,http://api2.example.com/endpoint" -c 5 -r 200
         `);
         process.exit(0);
         break;
@@ -274,10 +348,11 @@ API 压力测试工具
   return options;
 }
 
-if (require.main === module) {
+// ES Module 的主模块检查
+if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs();
   const test = new StressTest(options);
   test.run().catch(console.error);
 }
 
-module.exports = StressTest;
+export default StressTest;
