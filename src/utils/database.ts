@@ -237,7 +237,7 @@ class Database {
     try {
       // 获取总体统计
       const statsSQL = `
-        SELECT 
+        SELECT
           COUNT(*) as totalRequests,
           SUM(bytes_up) as totalBytesUp,
           SUM(bytes_down) as totalBytesDown,
@@ -249,7 +249,7 @@ class Database {
 
       // 获取热门主机
       const topHostsSQL = `
-        SELECT 
+        SELECT
           target_host as host,
           COUNT(*) as count,
           SUM(bytes_up + bytes_down) as bytes
