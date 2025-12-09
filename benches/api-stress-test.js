@@ -4,7 +4,6 @@ import http from 'node:http';
 import https from 'node:https';
 import { performance } from 'node:perf_hooks';
 
-
 class StressTest {
   constructor(options = {}) {
     // 解析基础URL，提取主机部分和路径部分
@@ -22,7 +21,13 @@ class StressTest {
     this.timeout = options.timeout || 5000;
 
     // 如果基础URL包含路径，且没有指定端点，则使用基础URL的路径作为端点
-    if (this.basePath && this.basePath !== '/' && (!options.endpoints || options.endpoints.length === 0 || (options.endpoints.length === 1 && options.endpoints[0] === '/'))) {
+    if (
+      this.basePath &&
+      this.basePath !== '/' &&
+      (!options.endpoints ||
+        options.endpoints.length === 0 ||
+        (options.endpoints.length === 1 && options.endpoints[0] === '/'))
+    ) {
       this.endpoints = [this.basePath];
     } else {
       this.endpoints = options.endpoints || ['/'];
