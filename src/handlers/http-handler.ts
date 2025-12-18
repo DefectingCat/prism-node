@@ -1,9 +1,60 @@
 import type * as http from 'node:http';
+import type * as net from 'node:net';
 import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
 import { formatBytes, generateRequestId } from '../utils/utils';
+
+/**
+ * Safely write to a socket, handling potential errors gracefully
+ * @param socket - The socket to write to
+ * @param data - The data to write
+ * @param requestId - Request ID for logging
+ * @returns true if write was successful, false otherwise
+ */
+function safeSocketWrite(
+  socket: net.Socket,
+  data: string | Buffer,
+  requestId: string,
+): boolean {
+  try {
+    if (socket.writable && !socket.destroyed) {
+      return socket.write(data);
+    } else {
+      logger.warn(
+        `[HTTP] [${requestId}] Socket is not writable, skipping write`,
+      );
+      return false;
+    }
+  } catch (error) {
+    logger.warn(
+      `[HTTP] [${requestId}] Error writing to socket: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return false;
+  }
+}
+
+/**
+ * Safely destroy a socket
+ * @param socket - The socket to destroy
+ * @param requestId - Request ID for logging
+ */
+function safeSocketDestroy(socket: net.Socket, requestId: string): void {
+  try {
+    if (!socket.destroyed) {
+      socket.destroy();
+    }
+  } catch (error) {
+    logger.warn(
+      `[HTTP] [${requestId}] Error destroying socket: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
 
 /**
  * Handles standard HTTP requests (GET, POST, etc.) by forwarding through SOCKS5 proxy
@@ -103,7 +154,7 @@ export async function handleHttpRequest(
       .join('\r\n');
 
     const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
-    socksSocket.write(httpRequest);
+    safeSocketWrite(socksSocket, httpRequest, requestId);
 
     logger.info(`[HTTP] [${requestId}] Request sent to target server`);
 
@@ -183,7 +234,7 @@ export async function handleHttpRequest(
         status: 'timeout',
         errorMessage: `Socket timeout after ${duration}ms`,
       });
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
       if (!res.headersSent) {
         res.writeHead(504, { 'Content-Type': 'text/plain' });
         res.end('Gateway Timeout');
@@ -196,17 +247,17 @@ export async function handleHttpRequest(
       logger.error(
         `[HTTP] [${requestId}] Client request error: ${err.message}`,
       );
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
     });
 
     req.on('aborted', () => {
       logger.error(`[HTTP] [${requestId}] Client request aborted`);
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
     });
 
     // Clean up when client response finishes
     res.on('finish', () => {
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
     });
   } catch (error) {
     const duration = Date.now() - startTime;

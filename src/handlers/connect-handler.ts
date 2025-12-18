@@ -7,6 +7,75 @@ import { statsCollector } from '../utils/stats-collector';
 import { formatBytes, generateRequestId } from '../utils/utils';
 
 /**
+ * Safely write to a socket, handling potential errors gracefully
+ * @param socket - The socket to write to
+ * @param data - The data to write
+ * @param requestId - Request ID for logging
+ * @returns true if write was successful, false otherwise
+ */
+function safeSocketWrite(
+  socket: net.Socket,
+  data: string | Buffer,
+  requestId: string,
+): boolean {
+  try {
+    if (socket.writable && !socket.destroyed) {
+      return socket.write(data);
+    } else {
+      logger.warn(
+        `[HTTPS] [${requestId}] Socket is not writable, skipping write`,
+      );
+      return false;
+    }
+  } catch (error) {
+    logger.warn(
+      `[HTTPS] [${requestId}] Error writing to socket: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return false;
+  }
+}
+
+/**
+ * Safely end a socket connection
+ * @param socket - The socket to end
+ * @param requestId - Request ID for logging
+ */
+function safeSocketEnd(socket: net.Socket, requestId: string): void {
+  try {
+    if (!socket.destroyed) {
+      socket.end();
+    }
+  } catch (error) {
+    logger.warn(
+      `[HTTPS] [${requestId}] Error ending socket: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
+/**
+ * Safely destroy a socket
+ * @param socket - The socket to destroy
+ * @param requestId - Request ID for logging
+ */
+function safeSocketDestroy(socket: net.Socket, requestId: string): void {
+  try {
+    if (!socket.destroyed) {
+      socket.destroy();
+    }
+  } catch (error) {
+    logger.warn(
+      `[HTTPS] [${requestId}] Error destroying socket: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
+/**
  * Handles HTTPS CONNECT requests by establishing a secure tunnel through SOCKS5 proxy
  * @param req - HTTP request containing target hostname:port
  * @param clientSocket - Client connection socket
@@ -54,7 +123,11 @@ export async function handleConnect(
       status: 'error',
       errorMessage: 'Invalid target address',
     });
-    clientSocket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+    safeSocketWrite(
+      clientSocket,
+      'HTTP/1.1 400 Bad Request\r\n\r\n',
+      requestId,
+    );
     clientSocket.end();
     return;
   }
@@ -90,7 +163,11 @@ export async function handleConnect(
     clientSocket.setTimeout(60000);
 
     // Notify client that tunnel is established
-    clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+    safeSocketWrite(
+      clientSocket,
+      'HTTP/1.1 200 Connection Established\r\n\r\n',
+      requestId,
+    );
     logger.info(
       `[HTTPS] [${requestId}] Tunnel established, starting data relay`,
     );
@@ -130,7 +207,7 @@ export async function handleConnect(
         status: 'error',
         errorMessage: err.message,
       });
-      clientSocket.destroy();
+      safeSocketDestroy(clientSocket, requestId);
     });
 
     clientSocket.on('error', (err) => {
@@ -147,7 +224,7 @@ export async function handleConnect(
         status: 'error',
         errorMessage: err.message,
       });
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
     });
 
     socksSocket.on('timeout', () => {
@@ -164,8 +241,8 @@ export async function handleConnect(
         status: 'timeout',
         errorMessage: `Socket timeout after ${duration}ms`,
       });
-      socksSocket.destroy();
-      clientSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(clientSocket, requestId);
     });
 
     clientSocket.on('timeout', () => {
@@ -182,8 +259,8 @@ export async function handleConnect(
         status: 'timeout',
         errorMessage: `Client timeout after ${duration}ms`,
       });
-      socksSocket.destroy();
-      clientSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(clientSocket, requestId);
     });
 
     // Clean up when either side closes
@@ -202,7 +279,7 @@ export async function handleConnect(
       logger.info(`[HTTPS] [${requestId}] ===== Tunnel Closed =====\n`);
 
       statsCollector.endConnection(requestId, { status: 'success' });
-      clientSocket.destroy();
+      safeSocketDestroy(clientSocket, requestId);
     });
 
     clientSocket.on('close', () => {
@@ -211,7 +288,7 @@ export async function handleConnect(
         `[HTTPS] [${requestId}] Client socket closed (duration: ${duration}ms)`,
       );
       statsCollector.endConnection(requestId, { status: 'success' });
-      socksSocket.destroy();
+      safeSocketDestroy(socksSocket, requestId);
     });
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -227,7 +304,11 @@ export async function handleConnect(
       status: 'error',
       errorMessage: error instanceof Error ? error.message : String(error),
     });
-    clientSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
-    clientSocket.end();
+    safeSocketWrite(
+      clientSocket,
+      'HTTP/1.1 502 Bad Gateway\r\n\r\n',
+      requestId,
+    );
+    safeSocketEnd(clientSocket, requestId);
   }
 }
