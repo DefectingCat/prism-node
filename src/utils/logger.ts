@@ -1,4 +1,5 @@
 import winston from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 /**
  * Winston logger configuration for the Prism Node proxy application
@@ -20,8 +21,24 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'prism-node' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    // 错误日志 - 按大小和日期轮转
+    new DailyRotateFile({
+      filename: 'logs/error-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      level: 'error',
+      maxSize: '20m', // 单个文件最大 20MB
+      maxFiles: '14d', // 保留 14 天
+      zippedArchive: true, // 压缩归档文件
+    }),
+
+    // 综合日志 - 按大小和日期轮转
+    new DailyRotateFile({
+      filename: 'logs/combined-%DATE%.log',
+      datePattern: 'YYYY-MM-DD',
+      maxSize: '20m', // 单个文件最大 20MB
+      maxFiles: '14d', // 保留 30 天
+      zippedArchive: true, // 压缩归档文件
+    }),
   ],
 });
 
