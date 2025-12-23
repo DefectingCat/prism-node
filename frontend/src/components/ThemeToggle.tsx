@@ -13,7 +13,10 @@ interface ThemeToggleProps {
   className?: string;
 }
 
-const ThemeToggle = ({ showLabels = true, className = '' }: ThemeToggleProps) => {
+const ThemeToggle = ({
+  showLabels = true,
+  className = '',
+}: ThemeToggleProps) => {
   // 从 localStorage 获取初始主题，如果没有则使用 'system'
   const getInitialTheme = () => {
     if (typeof window !== 'undefined') {
@@ -248,4 +251,3 @@ const ThemeToggle = ({ showLabels = true, className = '' }: ThemeToggleProps) =>
 };
 
 export default ThemeToggle;
-

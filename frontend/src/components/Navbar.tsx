@@ -1,7 +1,9 @@
-import ThemeToggle from './ThemeToggle';
+import { lazy, Suspense } from 'react';
+import ThemeToggleLoading from './ThemeToggleLoading';
+
+const LazyThemeToggle = lazy(() => import('./ThemeToggle'));
 
 const Navbar = () => {
-
   return (
     <div className="navbar bg-base-100 shadow-sm">
       <div className="flex-none">
@@ -26,7 +28,9 @@ const Navbar = () => {
         <span className="btn btn-ghost text-xl">Prism Node</span>
       </div>
       <div className="flex-none">
-        <ThemeToggle />
+        <Suspense fallback={<ThemeToggleLoading />}>
+          <LazyThemeToggle />
+        </Suspense>
       </div>
     </div>
   );
