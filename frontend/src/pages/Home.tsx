@@ -30,7 +30,7 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-base-100 p-8">
+    <div className="bg-base-100 p-8">
       <div className="max-w-4xl mx-auto">
         {/* Logo section */}
         <div className="flex justify-center gap-8 mb-8">

@@ -18,19 +18,23 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      {/* CssBaseline 为 MUI 提供一致的基础样式 */}
-      <CssBaseline />
-      <Navbar />
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Suspense fallback={<div>Loading...</div>}>
-              <Home />
-            </Suspense>
-          }
-        />
-      </Routes>
+      <main className="max-h-screen flex flex-col overflow-hidden">
+        {/* CssBaseline 为 MUI 提供一致的基础样式 */}
+        <CssBaseline />
+        <Navbar />
+        <div className="grow overflow-auto">
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Home />
+                </Suspense>
+              }
+            />
+          </Routes>
+        </div>
+      </main>
     </ThemeProvider>
   );
 }
