@@ -1,3 +1,5 @@
+import { Box, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import Button from '@mui/material/Button';
 import { useEffect, useState } from 'react';
 import viteLogo from '/vite.svg';
 import reactLogo from '../assets/react.svg';
@@ -9,7 +11,8 @@ const Home = () => {
   // 监听主题变化
   useEffect(() => {
     const updateTheme = () => {
-      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      const theme =
+        document.documentElement.getAttribute('data-theme') || 'light';
       setCurrentTheme(theme);
     };
 
@@ -39,6 +42,41 @@ const Home = () => {
           </a>
         </div>
 
+        {/* MUI 组件测试区域 */}
+        <Box sx={{ mb: 4 }}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" component="h2" gutterBottom>
+                MUI 组件暗色模式测试
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                这些是 Material-UI 组件，会自动响应暗色模式切换
+              </Typography>
+              <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
+                <Button variant="contained" color="primary">
+                  Primary Button
+                </Button>
+                <Button variant="contained" color="secondary">
+                  Secondary Button
+                </Button>
+                <Button variant="outlined" color="primary">
+                  Outlined Button
+                </Button>
+                <Button variant="text" color="primary">
+                  Text Button
+                </Button>
+              </Stack>
+              <Stack direction="row" spacing={1}>
+                <Chip label="Default Chip" />
+                <Chip label="Primary Chip" color="primary" />
+                <Chip label="Secondary Chip" color="secondary" />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Box>
+
+        <Button variant="contained">Hello world</Button>
+
         {/* Title */}
         <h1 className="text-4xl font-bold text-center mb-8 text-base-content">
           Vite + React
@@ -54,12 +92,8 @@ const Home = () => {
             <div className="stats stats-vertical lg:stats-horizontal shadow mb-4">
               <div className="stat">
                 <div className="stat-title">当前主题</div>
-                <div className="stat-value text-primary">
-                  {currentTheme}
-                </div>
-                <div className="stat-desc">
-                  DaisyUI data-theme 属性
-                </div>
+                <div className="stat-value text-primary">{currentTheme}</div>
+                <div className="stat-desc">DaisyUI data-theme 属性</div>
               </div>
               <div className="stat">
                 <div className="stat-title">计数器</div>
@@ -140,7 +174,8 @@ const Home = () => {
             />
           </svg>
           <span>
-            编辑 <code className="bg-base-300 px-2 py-1 rounded">src/App.tsx</code>{' '}
+            编辑{' '}
+            <code className="bg-base-300 px-2 py-1 rounded">src/App.tsx</code>{' '}
             并保存以测试 HMR
           </span>
         </div>

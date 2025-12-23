@@ -5,5 +5,7 @@
 
 /* DaisyUI 插件配置 - 启用 light 和 dark 主题 */
 @plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+  themes:
+    light --default,
+    dark --prefersdark;
 }
