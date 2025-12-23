@@ -5,7 +5,8 @@ import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import SvgIcon from '@mui/material/SvgIcon';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useTheme } from '../hooks/useTheme';
 
 interface ThemeToggleProps {
   /**
@@ -75,49 +76,9 @@ const ThemeToggle = ({
   showLabels = true,
   className = '',
 }: ThemeToggleProps) => {
-  // 从 localStorage 获取初始主题，如果没有则使用 'system'
-  const getInitialTheme = () => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme');
-      return savedTheme || 'system';
-    }
-    return 'system';
-  };
-
-  const [theme, setTheme] = useState<string>(getInitialTheme);
+  const { theme, setTheme } = useTheme();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-
-  // 应用主题
-  const applyTheme = useCallback((theme: string) => {
-    const htmlElement = document.documentElement;
-
-    // 移除所有主题类
-    htmlElement.classList.remove('light', 'dark');
-
-    // 确定实际应用的主题
-    let appliedTheme = theme;
-    if (theme === 'system') {
-      // 使用系统偏好
-      appliedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
-    }
-
-    // 应用 Tailwind CSS 类
-    htmlElement.classList.add(appliedTheme);
-
-    // 应用 DaisyUI data-theme 属性
-    htmlElement.setAttribute('data-theme', appliedTheme);
-
-    // 保存到 localStorage
-    localStorage.setItem('theme', theme);
-  }, []);
-
-  // 初始化主题
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme, applyTheme]);
 
   // 处理菜单打开
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -134,19 +95,6 @@ const ThemeToggle = ({
     setTheme(newTheme);
     handleClose();
   };
-
-  // 监听系统主题变化
-  useEffect(() => {
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => {
-        applyTheme('system');
-      };
-
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, [theme, applyTheme]);
 
   // 获取当前主题图标
   const getCurrentIcon = () => {
