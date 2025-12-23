@@ -1,2 +1,9 @@
 @import "tailwindcss";
-@plugin "daisyui";
+
+/* Tailwind CSS v4 深色模式配置 - 使用 class 策略 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* DaisyUI 插件配置 - 启用 light 和 dark 主题 */
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+}

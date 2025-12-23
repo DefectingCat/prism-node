@@ -5,6 +5,32 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      // 防止主题闪烁：在页面加载前应用保存的主题
+      (function() {
+        const theme = localStorage.getItem('theme') || 'system';
+        const root = document.documentElement;
+
+        // 确定实际应用的主题
+        let appliedTheme;
+        if (theme === 'dark') {
+          appliedTheme = 'dark';
+        } else if (theme === 'light') {
+          appliedTheme = 'light';
+        } else {
+          // system 模式：根据系统偏好设置
+          appliedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        }
+
+        // 应用 Tailwind CSS 类
+        root.classList.add(appliedTheme);
+
+        // 应用 DaisyUI data-theme 属性
+        root.setAttribute('data-theme', appliedTheme);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

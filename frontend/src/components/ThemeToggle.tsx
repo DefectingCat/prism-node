@@ -35,16 +35,20 @@ const ThemeToggle = ({
     // 移除所有主题类
     htmlElement.classList.remove('light', 'dark');
 
+    // 确定实际应用的主题
+    let appliedTheme = theme;
     if (theme === 'system') {
       // 使用系统偏好
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        htmlElement.classList.add('dark');
-      } else {
-        htmlElement.classList.add('light');
-      }
-    } else {
-      htmlElement.classList.add(theme);
+      appliedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
     }
+
+    // 应用 Tailwind CSS 类
+    htmlElement.classList.add(appliedTheme);
+
+    // 应用 DaisyUI data-theme 属性
+    htmlElement.setAttribute('data-theme', appliedTheme);
 
     // 保存到 localStorage
     localStorage.setItem('theme', theme);
@@ -58,7 +62,6 @@ const ThemeToggle = ({
   // 处理主题切换
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    applyTheme(newTheme);
   };
 
   // 监听系统主题变化
