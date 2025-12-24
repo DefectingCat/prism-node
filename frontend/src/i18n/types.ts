@@ -13,6 +13,30 @@ export interface TranslationResources {
     chinese: string;
     english: string;
   };
+  stats: {
+    title: string;
+    description: string;
+    getStatsButton: string;
+    getActiveConnectionsButton: string;
+    activeConnections: string;
+    statsData: string;
+    totalRequests: string;
+    totalBytesUp: string;
+    totalBytesDown: string;
+    avgDuration: string;
+    topHosts: string;
+    recentRecords: string;
+    host: string;
+    visits: string;
+    duration: string;
+    status: {
+      success: string;
+      error: string;
+      timeout: string;
+    };
+    loading: string;
+    errorFetching: string;
+  };
 }
 
 declare module 'i18next' {

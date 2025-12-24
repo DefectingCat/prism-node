@@ -12,15 +12,13 @@ const resources = {
   },
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: localStorage.getItem('language') || 'zh-CN', // 默认语言为中文
-    fallbackLng: 'zh-CN',
-    interpolation: {
-      escapeValue: false, // React 已经处理了 XSS 防护
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: localStorage.getItem('language') || 'zh-CN', // 默认语言为中文
+  fallbackLng: 'zh-CN',
+  interpolation: {
+    escapeValue: false, // React 已经处理了 XSS 防护
+  },
+});
 
 export default i18n;

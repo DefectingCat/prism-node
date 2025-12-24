@@ -33,7 +33,9 @@ const Settings = () => {
     const urlRegex = /^https?:\/\/[\w\-.]+(:\d+)?(\/[\w\-./]*)?$/;
 
     if (!relativePathRegex.test(url) && !urlRegex.test(url)) {
-      setError('请输入有效的 URL 格式（如：/api 或 http://localhost:3000/api）');
+      setError(
+        '请输入有效的 URL 格式（如：/api 或 http://localhost:3000/api）',
+      );
       return false;
     }
 
@@ -93,7 +95,8 @@ const Settings = () => {
             后端接口配置
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            配置应用程序使用的后端 API 基础地址。修改后，所有 API 请求都将使用新的基础地址。
+            配置应用程序使用的后端 API 基础地址。修改后，所有 API
+            请求都将使用新的基础地址。
           </Typography>
 
           <Stack spacing={3}>
@@ -103,7 +106,8 @@ const Settings = () => {
               onChange={handleInputChange}
               error={!!error}
               helperText={
-                error || '支持相对路径（如：/api）或完整 URL（如：http://localhost:3000/api）'
+                error ||
+                '支持相对路径（如：/api）或完整 URL（如：http://localhost:3000/api）'
               }
               placeholder="/api"
               fullWidth

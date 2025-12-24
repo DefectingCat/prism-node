@@ -11,5 +11,29 @@
     "language": "Language",
     "chinese": "中文",
     "english": "English"
+  },
+  "stats": {
+    "title": "Statistics API Test",
+    "description": "Test backend statistics APIs (GET /stats and GET /stats/active)",
+    "getStatsButton": "Get Statistics",
+    "getActiveConnectionsButton": "Get Active Connections",
+    "activeConnections": "Active Connections",
+    "statsData": "Statistics Data",
+    "totalRequests": "Total Requests",
+    "totalBytesUp": "Total Bytes Uploaded",
+    "totalBytesDown": "Total Bytes Downloaded",
+    "avgDuration": "Average Duration",
+    "topHosts": "Top Hosts",
+    "recentRecords": "Recent Records",
+    "host": "Host",
+    "visits": "visits",
+    "duration": "Duration",
+    "status": {
+      "success": "Success",
+      "error": "Error",
+      "timeout": "Timeout"
+    },
+    "loading": "Loading...",
+    "errorFetching": "Failed to fetch data"
   }
 }
