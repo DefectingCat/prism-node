@@ -1,17 +1,52 @@
 #!/usr/bin/env node
 
-import { exec } from 'node:child_process';
-import util from 'node:util';
+import { spawn } from 'node:child_process';
 
-const execAsync = util.promisify(exec);
+function runCommand(command, args = [], options = {}) {
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(command, args, options);
 
-async function main() {
-  console.log('Building server...');
-  const { stdout } = await execAsync('pnpm run build');
-  console.log(stdout);
-  console.log('Building frontend...');
-  const { stdout: stdout2 } = await execAsync('cd frontend && pnpm run build');
-  console.log(stdout2);
+    // Collect stdout data
+    let stdoutData = '';
+
+    childProcess.stdout.on('data', (data) => {
+      stdoutData += data.toString();
+      process.stdout.write(data); // Print immediately
+    });
+
+    // Collect stderr data
+    let stderrData = '';
+
+    childProcess.stderr.on('data', (data) => {
+      stderrData += data.toString();
+      process.stderr.write(data); // Print immediately
+    });
+
+    childProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve(stdoutData); // Resolve with stdout data
+      } else {
+        reject(new Error(`Command "${command} ${args.join(' ')}" failed with exit code ${code}\nStderr: ${stderrData}`));
+      }
+    });
+
+    childProcess.on('error', (error) => {
+      reject(error);
+    });
+  });
 }
 
-main().catch(console.error);
+async function main() {
+  try {
+    console.log('Building server...');
+    await runCommand('pnpm', ['run', 'build']);
+    console.log('Building frontend...');
+    await runCommand('pnpm', ['run', 'build'], { cwd: 'frontend' });
+    console.log('Build completed successfully!');
+  } catch (error) {
+    console.error('Build failed:', error.message);
+    process.exit(1);
+  }
+}
+
+main();
