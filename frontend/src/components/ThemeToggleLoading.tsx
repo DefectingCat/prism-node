@@ -1,9 +1,16 @@
-import IconButton from '@mui/material/IconButton';
 import { Box } from '@mui/material';
+import IconButton from '@mui/material/IconButton';
 
 const ThemeToggleLoading = () => (
   <IconButton disabled aria-label="loading theme toggle">
-    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       {/* 外圈脉冲动画 */}
       <Box
         sx={{
@@ -21,7 +28,10 @@ const ThemeToggleLoading = () => (
             height: 24,
             width: 24,
             borderRadius: '50%',
-            bgcolor: (theme) => theme.palette.mode === 'dark' ? 'rgba(253, 224, 71, 0.2)' : 'rgba(250, 204, 21, 0.2)',
+            bgcolor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(253, 224, 71, 0.2)'
+                : 'rgba(250, 204, 21, 0.2)',
           }}
         />
       </Box>
@@ -37,7 +47,10 @@ const ThemeToggleLoading = () => (
           position: 'relative',
           height: 24,
           width: 24,
-          color: (theme) => theme.palette.mode === 'dark' ? 'rgba(107, 114, 128, 1)' : 'rgba(156, 163, 175, 1)',
+          color: (theme) =>
+            theme.palette.mode === 'dark'
+              ? 'rgba(107, 114, 128, 1)'
+              : 'rgba(156, 163, 175, 1)',
           animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         }}
       >

@@ -12,9 +12,9 @@ import {
 } from '@mui/material';
 import InfoIcon from '@mui/material/SvgIcon';
 import { useState } from 'react';
+import viteLogo from '/vite.svg';
 import reactLogo from '../assets/react.svg';
 import { useTheme } from '../hooks/useTheme';
-import viteLogo from '/vite.svg';
 
 const InfoSvgIcon = () => (
   <InfoIcon>
@@ -91,7 +91,13 @@ const Home = () => {
       </Box>
 
       {/* Title */}
-      <Typography variant="h3" component="h1" align="center" gutterBottom sx={{ mb: 4 }}>
+      <Typography
+        variant="h3"
+        component="h1"
+        align="center"
+        gutterBottom
+        sx={{ mb: 4 }}
+      >
         Vite + React
       </Typography>
 
@@ -160,12 +166,14 @@ const Home = () => {
       </Card>
 
       {/* 颜色展示 */}
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Card sx={{ bgcolor: 'primary.main', color: 'primary.contrastText', flex: 1 }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+        <Card
+          sx={{
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            flex: 1,
+          }}
+        >
           <CardContent>
             <Typography variant="h6" gutterBottom>
               主色调
@@ -173,7 +181,13 @@ const Home = () => {
             <Typography variant="body2">Primary Color</Typography>
           </CardContent>
         </Card>
-        <Card sx={{ bgcolor: 'secondary.main', color: 'secondary.contrastText', flex: 1 }}>
+        <Card
+          sx={{
+            bgcolor: 'secondary.main',
+            color: 'secondary.contrastText',
+            flex: 1,
+          }}
+        >
           <CardContent>
             <Typography variant="h6" gutterBottom>
               次要色
@@ -181,7 +195,13 @@ const Home = () => {
             <Typography variant="body2">Secondary Color</Typography>
           </CardContent>
         </Card>
-        <Card sx={{ bgcolor: 'success.main', color: 'success.contrastText', flex: 1 }}>
+        <Card
+          sx={{
+            bgcolor: 'success.main',
+            color: 'success.contrastText',
+            flex: 1,
+          }}
+        >
           <CardContent>
             <Typography variant="h6" gutterBottom>
               强调色

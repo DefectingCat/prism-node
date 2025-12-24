@@ -12,7 +12,9 @@ export interface ThemeContextType {
 /**
  * 创建主题上下文
  */
-export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType | undefined>(
+  undefined,
+);
 
 /**
  * 主题上下文 Provider
@@ -32,7 +34,9 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme') || 'system';
       if (savedTheme === 'system') {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
       }
       return savedTheme as 'light' | 'dark';
     }
@@ -65,12 +69,15 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   /**
    * 设置新主题
    */
-  const setTheme = useCallback((newTheme: string) => {
-    setThemeState(newTheme);
-    const appliedMode = applyTheme(newTheme);
-    setMode(appliedMode);
-    localStorage.setItem('theme', newTheme);
-  }, [applyTheme]);
+  const setTheme = useCallback(
+    (newTheme: string) => {
+      setThemeState(newTheme);
+      const appliedMode = applyTheme(newTheme);
+      setMode(appliedMode);
+      localStorage.setItem('theme', newTheme);
+    },
+    [applyTheme],
+  );
 
   // 监听系统主题变化
   useEffect(() => {
