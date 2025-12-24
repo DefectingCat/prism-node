@@ -158,11 +158,46 @@ export class StatsCollector {
   }
 
   /**
-   * 获取当前活跃连接数
-   * @returns 活跃连接数量
+   * 获取当前活跃连接信息（支持分页）
+   * @param options 查询选项
+   * @returns 分页后的活跃连接列表和总数
    */
-  getActiveConnections(): number {
-    return this.activeConnections.size;
+  getActiveConnections(
+    options: { limit?: number; page?: number; pageSize?: number } = {},
+  ): {
+    total: number;
+    connections: Array<{
+      requestId: string;
+      startTime: number;
+      record: Partial<AccessRecord>;
+      bytesUp: number;
+      bytesDown: number;
+    }>;
+  } {
+    const total = this.activeConnections.size;
+    const connections = Array.from(this.activeConnections.entries()).map(
+      ([requestId, connection]) => ({
+        requestId,
+        ...connection,
+      }),
+    );
+
+    // Apply pagination
+    const page = options.page ? Math.max(1, Number(options.page)) : 1;
+    const pageSize = options.pageSize
+      ? Math.min(1000, Math.max(1, Number(options.pageSize)))
+      : 1000;
+    const limit = options.limit
+      ? Math.min(1000, Math.max(1, Number(options.limit)))
+      : pageSize;
+
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + limit;
+
+    return {
+      total,
+      connections: connections.slice(startIndex, endIndex),
+    };
   }
 
   /**

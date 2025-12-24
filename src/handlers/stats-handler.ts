@@ -87,14 +87,39 @@ export class StatsHandler {
   }
 
   /**
-   * Retrieves the current number of active proxy connections
+   * Retrieves the current number of active proxy connections with pagination
+   *
+   * Query parameters:
+   * - limit: Limit number of records
+   * - page: Page number for pagination
+   * - pageSize: Records per page
    *
    * @param c - Hono context object
    * @returns JSON response with active connection count
    */
   async getActiveConnections(c: Context) {
     try {
-      const activeConnections = statsCollector.getActiveConnections();
+      const query = c.req.query();
+
+      const options: {
+        limit?: number;
+        page?: number;
+        pageSize?: number;
+      } = {};
+
+      if (query.limit) {
+        options.limit = Number(query.limit);
+      }
+
+      if (query.page) {
+        options.page = Math.max(1, Number(query.page));
+      }
+
+      if (query.pageSize) {
+        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
+      }
+
+      const activeConnections = statsCollector.getActiveConnections(options);
 
       return c.json({
         success: true,
