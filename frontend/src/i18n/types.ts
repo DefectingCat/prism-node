@@ -43,6 +43,14 @@ export interface TranslationResources {
     upload: string;
     download: string;
     responseTime: string;
+    queryParams: string;
+    startTime: string;
+    endTime: string;
+    requestType: string;
+    all: string;
+    limit: string;
+    page: string;
+    pageSize: string;
   };
 }
 

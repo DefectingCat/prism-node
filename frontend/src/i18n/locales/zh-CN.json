@@ -7,32 +7,24 @@
     "settings": "设置",
     "about": "关于"
   },
-  "common": {
-    "language": "语言",
-    "chinese": "中文",
-    "english": "English"
-  },
+  "common": { "language": "语言", "chinese": "中文", "english": "English" },
   "stats": {
-    "title": "统计接口测试",
+    "title": "统计 API 测试",
     "description": "测试后端统计接口 (GET /stats 和 GET /stats/active)",
     "getStatsButton": "获取统计数据",
-    "getActiveConnectionsButton": "获取活跃连接数",
-    "activeConnections": "活跃连接数",
+    "getActiveConnectionsButton": "获取活跃连接",
+    "activeConnections": "活跃连接",
     "statsData": "统计数据",
     "totalRequests": "总请求数",
     "totalBytesUp": "总上传字节数",
     "totalBytesDown": "总下载字节数",
-    "avgDuration": "平均持续时间",
+    "avgDuration": "平均响应时间",
     "topHosts": "热门主机",
-    "recentRecords": "最近记录",
+    "recentRecords": "最近请求记录",
     "host": "主机",
-    "visits": "次访问",
-    "duration": "持续时间",
-    "status": {
-      "success": "成功",
-      "error": "错误",
-      "timeout": "超时"
-    },
+    "visits": "访问次数",
+    "duration": "响应时间",
+    "status": { "success": "成功", "error": "失败", "timeout": "超时" },
     "loading": "加载中...",
     "errorFetching": "获取数据失败",
     "topHostsVisitCount": "热门主机访问次数",
@@ -41,6 +33,14 @@
     "visitCount": "访问次数",
     "upload": "上传",
     "download": "下载",
-    "responseTime": "响应时间 (毫秒)"
+    "responseTime": "响应时间 (毫秒)",
+    "queryParams": "请求参数",
+    "startTime": "开始时间",
+    "endTime": "结束时间",
+    "requestType": "请求类型",
+    "all": "全部",
+    "limit": "限制",
+    "page": "页码",
+    "pageSize": "每页数量"
   }
 }

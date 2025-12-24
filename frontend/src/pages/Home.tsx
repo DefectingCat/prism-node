@@ -5,13 +5,20 @@ import {
   CardContent,
   Container,
   Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
-import { BarChart, LineChart, PieChart } from '@mui/x-charts';
+import { BarChart, PieChart } from '@mui/x-charts';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
+import type { StatsQueryParams } from '../types/stats';
 import { useStatsApi } from '../utils/api';
 
 // 通用文件大小格式化函数
@@ -32,22 +39,45 @@ const Home = () => {
   const { getStats, getActiveConnections } = useStatsApi();
   const { t } = useTranslation();
 
-  // 使用 SWR 自动获取统计数据
-  const { data: statsData, error: statsError } = useSWR('stats', () =>
-    getStats({
-      page: 1,
-      pageSize: 10,
-    }),
+  // 查询参数状态
+  const [queryParams, setQueryParams] = useState<StatsQueryParams>({
+    page: 1,
+    pageSize: 10,
+  });
+
+  // 使用 SWR 的 refreshInterval 实现自动请求
+  const { data: statsData, error: statsError } = useSWR(
+    ['stats', queryParams], // 使用查询参数作为 key
+    () => getStats(queryParams),
+    { refreshInterval: 1000 }, // 1秒自动刷新
   );
 
   // 使用 SWR 自动获取活跃连接数
   const { data: activeConnections, error: connectionsError } = useSWR(
     'activeConnections',
     getActiveConnections,
+    { refreshInterval: 1000 }, // 1秒自动刷新
   );
 
   // 统一错误信息
   const error = statsError || connectionsError;
+
+  // 参数变化处理函数
+  const handleParamChange = (field: keyof StatsQueryParams, value: string) => {
+    // 转换数值类型
+    const numericValue =
+      typeof value === 'string' && !isNaN(Number(value))
+        ? Number(value)
+        : value;
+
+    // 转换空字符串为 undefined
+    const finalValue = numericValue === '' ? undefined : numericValue;
+
+    setQueryParams((prev) => ({
+      ...prev,
+      [field]: finalValue,
+    }));
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -66,6 +96,103 @@ const Home = () => {
               {error}
             </Alert>
           )}
+
+          {/* 查询参数配置区域 */}
+          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
+              {t('stats.queryParams')}
+            </Typography>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ mb: 2 }}
+            >
+              {/* Start Time */}
+              <TextField
+                label={t('stats.startTime')}
+                type="number"
+                value={queryParams.startTime || ''}
+                onChange={(e) => handleParamChange('startTime', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              {/* End Time */}
+              <TextField
+                label={t('stats.endTime')}
+                type="number"
+                value={queryParams.endTime || ''}
+                onChange={(e) => handleParamChange('endTime', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ mb: 2 }}
+            >
+              {/* Host */}
+              <TextField
+                label={t('stats.host')}
+                value={queryParams.host || ''}
+                onChange={(e) => handleParamChange('host', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              {/* Type */}
+              <FormControl size="small" sx={{ flex: 1 }}>
+                <InputLabel id="type-select-label">
+                  {t('stats.requestType')}
+                </InputLabel>
+                <Select
+                  labelId="type-select-label"
+                  id="type-select"
+                  value={queryParams.type || ''}
+                  label={t('stats.requestType')}
+                  onChange={(e) => handleParamChange('type', e.target.value)}
+                >
+                  <MenuItem value="">
+                    <em>{t('stats.all')}</em>
+                  </MenuItem>
+                  <MenuItem value="HTTP">HTTP</MenuItem>
+                  <MenuItem value="HTTPS">HTTPS</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
+              sx={{ mb: 2 }}
+            >
+              {/* Limit */}
+              <TextField
+                label={t('stats.limit')}
+                type="number"
+                value={queryParams.limit || ''}
+                onChange={(e) => handleParamChange('limit', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              {/* Page */}
+              <TextField
+                label={t('stats.page')}
+                type="number"
+                value={queryParams.page || ''}
+                onChange={(e) => handleParamChange('page', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+              {/* Page Size */}
+              <TextField
+                label={t('stats.pageSize')}
+                type="number"
+                value={queryParams.pageSize || ''}
+                onChange={(e) => handleParamChange('pageSize', e.target.value)}
+                size="small"
+                sx={{ flex: 1 }}
+              />
+            </Stack>
+          </Paper>
 
           {activeConnections !== null && (
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
@@ -139,7 +266,7 @@ const Home = () => {
                     color="text.secondary"
                     gutterBottom
                   >
-                    {t('stats.topHosts')} (Top {statsData.topHosts.length})
+                    {t('stats.topHosts', { count: statsData.topHosts.length })}
                   </Typography>
                   <Stack spacing={1}>
                     {statsData.topHosts.map((host, index) => (
@@ -224,7 +351,7 @@ const Home = () => {
                   >
                     {t('stats.responseTimeTrend')}
                   </Typography>
-                  <LineChart
+                  <BarChart
                     xAxis={[
                       {
                         data: statsData.records.map((data) => data.targetHost),

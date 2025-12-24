@@ -7,11 +7,7 @@
     "settings": "Settings",
     "about": "About"
   },
-  "common": {
-    "language": "Language",
-    "chinese": "中文",
-    "english": "English"
-  },
+  "common": { "language": "Language", "chinese": "中文", "english": "English" },
   "stats": {
     "title": "Statistics API Test",
     "description": "Test backend statistics APIs (GET /stats and GET /stats/active)",
@@ -28,11 +24,7 @@
     "host": "Host",
     "visits": "visits",
     "duration": "Duration",
-    "status": {
-      "success": "Success",
-      "error": "Error",
-      "timeout": "Timeout"
-    },
+    "status": { "success": "Success", "error": "Error", "timeout": "Timeout" },
     "loading": "Loading...",
     "errorFetching": "Failed to fetch data",
     "topHostsVisitCount": "Top Hosts Visit Count",
@@ -41,6 +33,14 @@
     "visitCount": "Visit Count",
     "upload": "Upload",
     "download": "Download",
-    "responseTime": "Response Time (ms)"
+    "responseTime": "Response Time (ms)",
+    "queryParams": "Query Parameters",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "requestType": "Request Type",
+    "all": "All",
+    "limit": "Limit",
+    "page": "Page",
+    "pageSize": "Page Size"
   }
 }
