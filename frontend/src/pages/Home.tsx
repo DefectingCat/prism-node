@@ -14,15 +14,26 @@ import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import { useStatsApi } from '../utils/api';
 
+// 通用文件大小格式化函数
+const formatFileSize = (bytes: number): string => {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  let size = bytes;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
+};
+
 const Home = () => {
   const { getStats, getActiveConnections } = useStatsApi();
   const { t } = useTranslation();
 
   // 使用 SWR 自动获取统计数据
-  const {
-    data: statsData,
-    error: statsError,
-  } = useSWR('stats', () =>
+  const { data: statsData, error: statsError } = useSWR('stats', () =>
     getStats({
       page: 1,
       pageSize: 10,
@@ -30,10 +41,10 @@ const Home = () => {
   );
 
   // 使用 SWR 自动获取活跃连接数
-  const {
-    data: activeConnections,
-    error: connectionsError,
-  } = useSWR('activeConnections', getActiveConnections);
+  const { data: activeConnections, error: connectionsError } = useSWR(
+    'activeConnections',
+    getActiveConnections,
+  );
 
   // 统一错误信息
   const error = statsError || connectionsError;
@@ -54,7 +65,7 @@ const Home = () => {
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
-                    )}
+          )}
 
           {activeConnections !== null && (
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
@@ -89,7 +100,7 @@ const Home = () => {
                     {t('stats.totalBytesUp')}
                   </Typography>
                   <Typography variant="h5">
-                    {(statsData.totalBytesUp / 1024).toFixed(2)} KB
+                    {formatFileSize(statsData.totalBytesUp)}
                   </Typography>
                 </Box>
 
@@ -98,7 +109,7 @@ const Home = () => {
                     {t('stats.totalBytesDown')}
                   </Typography>
                   <Typography variant="h5">
-                    {(statsData.totalBytesDown / 1024).toFixed(2)} KB
+                    {formatFileSize(statsData.totalBytesDown)}
                   </Typography>
                 </Box>
 
@@ -135,7 +146,7 @@ const Home = () => {
                       <Paper key={index} sx={{ p: 1.5 }}>
                         <Typography variant="body2">
                           {host.host} - {host.count} {t('stats.visits')} (
-                          {(host.bytes / 1024).toFixed(2)} KB)
+                          {formatFileSize(host.bytes)})
                         </Typography>
                       </Paper>
                     ))}

@@ -40,10 +40,10 @@ export default defineConfig({
           'mui-charts': ['@mui/x-charts'],
 
           // 国际化相关
-          'i18n': ['i18next', 'react-i18next'],
+          i18n: ['i18next', 'react-i18next'],
 
           // 工具库
-          'utils': ['axios'],
+          utils: ['axios'],
         },
 
         // 优化输出文件命名

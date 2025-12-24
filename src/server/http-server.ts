@@ -52,7 +52,9 @@ export function createHttpServer(staticDir = './html'): Hono {
   // SPA 回退路由 - 当请求的文件不存在时，返回 index.html 以支持前端路由
   app.get('*', serveStatic({ path: './index.html', root: staticDir }));
 
-  logger.info('Static file serving enabled with SPA support', { directory: staticDir });
+  logger.info('Static file serving enabled with SPA support', {
+    directory: staticDir,
+  });
 
   return app;
 }
