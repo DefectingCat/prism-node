@@ -1,6 +1,7 @@
 packages:
-  - "frontend"
-  - "."
+  - frontend
+  - .
 
 onlyBuiltDependencies:
+  - esbuild
   - sqlite3

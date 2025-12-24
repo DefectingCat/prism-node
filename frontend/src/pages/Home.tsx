@@ -15,8 +15,8 @@ import {
   Typography,
 } from '@mui/material';
 import { BarChart, PieChart } from '@mui/x-charts';
+import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
@@ -101,6 +101,13 @@ const Home = () => {
     }));
   };
 
+  // 日期范围变化处理函数
+  const handleDateRangeChange = (newValue: [Dayjs | null, Dayjs | null]) => {
+    const [startDate, endDate] = newValue;
+    handleParamChange('startTime', startDate);
+    handleParamChange('endTime', endDate);
+  };
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -130,40 +137,31 @@ const Home = () => {
                 spacing={2}
                 sx={{ mb: 2 }}
               >
-                {/* Start Time */}
-                <DatePicker
-                  label={t('stats.startTime')}
-                  value={
-                    queryParams.startTime ? dayjs(queryParams.startTime) : null
-                  }
-                  onChange={(newValue) =>
-                    handleParamChange('startTime', newValue)
-                  }
-                  slotProps={{ textField: { size: 'small', sx: { flex: 1 } } }}
+                {/* Date Range */}
+                <DateRangePicker
+                  value={[
+                    queryParams.startTime ? dayjs(queryParams.startTime) : null,
+                    queryParams.endTime ? dayjs(queryParams.endTime) : null,
+                  ]}
+                  onChange={handleDateRangeChange}
+                  sx={{ flex: 1 }}
+                  slotProps={{
+                    field: {
+                      clearable: true,
+                      onClear: () =>
+                        setQueryParams((d) => ({
+                          ...d,
+                          startTime: undefined,
+                          endTime: undefined,
+                        })),
+                    },
+                  }}
                 />
-                {/* End Time */}
-                <DatePicker
-                  label={t('stats.endTime')}
-                  value={
-                    queryParams.endTime ? dayjs(queryParams.endTime) : null
-                  }
-                  onChange={(newValue) =>
-                    handleParamChange('endTime', newValue)
-                  }
-                  slotProps={{ textField: { size: 'small', sx: { flex: 1 } } }}
-                />
-              </Stack>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={2}
-                sx={{ mb: 2 }}
-              >
                 {/* Host */}
                 <TextField
                   label={t('stats.host')}
                   value={queryParams.host || ''}
                   onChange={(e) => handleParamChange('host', e.target.value)}
-                  size="small"
                   sx={{ flex: 1 }}
                 />
                 {/* Type */}
@@ -174,6 +172,7 @@ const Home = () => {
                   <Select
                     labelId="type-select-label"
                     id="type-select"
+                    size="medium"
                     value={queryParams.type || ''}
                     label={t('stats.requestType')}
                     onChange={(e) => handleParamChange('type', e.target.value)}
@@ -197,7 +196,6 @@ const Home = () => {
                   type="number"
                   value={queryParams.limit || ''}
                   onChange={(e) => handleParamChange('limit', e.target.value)}
-                  size="small"
                   sx={{ flex: 1 }}
                 />
                 {/* Page */}
@@ -206,7 +204,6 @@ const Home = () => {
                   type="number"
                   value={queryParams.page || ''}
                   onChange={(e) => handleParamChange('page', e.target.value)}
-                  size="small"
                   sx={{ flex: 1 }}
                 />
                 {/* Page Size */}
@@ -217,7 +214,6 @@ const Home = () => {
                   onChange={(e) =>
                     handleParamChange('pageSize', e.target.value)
                   }
-                  size="small"
                   sx={{ flex: 1 }}
                 />
               </Stack>
