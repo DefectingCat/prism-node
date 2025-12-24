@@ -15,6 +15,9 @@ import {
   Typography,
 } from '@mui/material';
 import { BarChart, PieChart } from '@mui/x-charts';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -63,320 +66,352 @@ const Home = () => {
   const error = statsError || connectionsError;
 
   // 参数变化处理函数
-  const handleParamChange = (field: keyof StatsQueryParams, value: string) => {
-    // 转换数值类型
-    const numericValue =
-      typeof value === 'string' && !isNaN(Number(value))
-        ? Number(value)
-        : value;
+  const handleParamChange = (
+    field: keyof StatsQueryParams,
+    value: string | Date | null,
+  ) => {
+    let finalValue: string | number | undefined | Date | null = value;
 
-    // 转换空字符串为 undefined
-    const finalValue = numericValue === '' ? undefined : numericValue;
+    // 转换时间类型
+    if (field === 'startTime' || field === 'endTime') {
+      // 如果是 Date 对象，转换为 Unix 时间戳 (毫秒)
+      if (value instanceof Date) {
+        finalValue = value.getTime();
+      }
+      // 如果是字符串，尝试转换为数值
+      else if (typeof value === 'string') {
+        const numericValue = isNaN(Number(value)) ? value : Number(value);
+        finalValue = numericValue === '' ? undefined : numericValue;
+      }
+      // 如果是 null，转换为 undefined
+      else {
+        finalValue = undefined;
+      }
+    }
+    // 转换其他数值类型参数
+    else if (typeof value === 'string') {
+      const numericValue = isNaN(Number(value)) ? value : Number(value);
+      finalValue = numericValue === '' ? undefined : numericValue;
+    }
 
     setQueryParams((prev) => ({
       ...prev,
-      [field]: finalValue,
+      [field]: finalValue as string | number | undefined,
     }));
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* 统计接口测试区域 */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            {t('stats.title')}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {t('stats.description')}
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          {/* 查询参数配置区域 */}
-          <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-            <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
-              {t('stats.queryParams')}
+    <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        {/* 统计接口测试区域 */}
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              {t('stats.title')}
             </Typography>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              sx={{ mb: 2 }}
-            >
-              {/* Start Time */}
-              <TextField
-                label={t('stats.startTime')}
-                type="number"
-                value={queryParams.startTime || ''}
-                onChange={(e) => handleParamChange('startTime', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              {/* End Time */}
-              <TextField
-                label={t('stats.endTime')}
-                type="number"
-                value={queryParams.endTime || ''}
-                onChange={(e) => handleParamChange('endTime', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              sx={{ mb: 2 }}
-            >
-              {/* Host */}
-              <TextField
-                label={t('stats.host')}
-                value={queryParams.host || ''}
-                onChange={(e) => handleParamChange('host', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              {/* Type */}
-              <FormControl size="small" sx={{ flex: 1 }}>
-                <InputLabel id="type-select-label">
-                  {t('stats.requestType')}
-                </InputLabel>
-                <Select
-                  labelId="type-select-label"
-                  id="type-select"
-                  value={queryParams.type || ''}
-                  label={t('stats.requestType')}
-                  onChange={(e) => handleParamChange('type', e.target.value)}
-                >
-                  <MenuItem value="">
-                    <em>{t('stats.all')}</em>
-                  </MenuItem>
-                  <MenuItem value="HTTP">HTTP</MenuItem>
-                  <MenuItem value="HTTPS">HTTPS</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-              sx={{ mb: 2 }}
-            >
-              {/* Limit */}
-              <TextField
-                label={t('stats.limit')}
-                type="number"
-                value={queryParams.limit || ''}
-                onChange={(e) => handleParamChange('limit', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              {/* Page */}
-              <TextField
-                label={t('stats.page')}
-                type="number"
-                value={queryParams.page || ''}
-                onChange={(e) => handleParamChange('page', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-              {/* Page Size */}
-              <TextField
-                label={t('stats.pageSize')}
-                type="number"
-                value={queryParams.pageSize || ''}
-                onChange={(e) => handleParamChange('pageSize', e.target.value)}
-                size="small"
-                sx={{ flex: 1 }}
-              />
-            </Stack>
-          </Paper>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              {t('stats.description')}
+            </Typography>
 
-          {activeConnections !== null && (
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            {/* 查询参数配置区域 */}
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                {t('stats.activeConnections')}
+              <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
+                {t('stats.queryParams')}
               </Typography>
-              <Typography variant="h4" color="primary" sx={{ my: 1 }}>
-                {activeConnections}
-              </Typography>
-            </Paper>
-          )}
-
-          {statsData && (
-            <Paper elevation={2} sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                {t('stats.statsData')}
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {t('stats.totalRequests')}
-                  </Typography>
-                  <Typography variant="h5">
-                    {statsData.totalRequests}
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {t('stats.totalBytesUp')}
-                  </Typography>
-                  <Typography variant="h5">
-                    {formatFileSize(statsData.totalBytesUp)}
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {t('stats.totalBytesDown')}
-                  </Typography>
-                  <Typography variant="h5">
-                    {formatFileSize(statsData.totalBytesDown)}
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {t('stats.avgDuration')}
-                  </Typography>
-                  <Typography variant="h5">
-                    {statsData.avgDuration.toFixed(2)} ms
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    {t('stats.activeConnections')}
-                  </Typography>
-                  <Typography variant="h5">
-                    {statsData.activeConnections}
-                  </Typography>
-                </Box>
-
-                <Divider />
-
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                sx={{ mb: 2 }}
+              >
+                {/* Start Time */}
+                <DatePicker
+                  label={t('stats.startTime')}
+                  value={
+                    queryParams.startTime
+                      ? new Date(queryParams.startTime)
+                      : null
+                  }
+                  onChange={(newValue) =>
+                    handleParamChange('startTime', newValue)
+                  }
+                  slotProps={{ textField: { size: 'small', sx: { flex: 1 } } }}
+                />
+                {/* End Time */}
+                <DatePicker
+                  label={t('stats.endTime')}
+                  value={
+                    queryParams.endTime ? new Date(queryParams.endTime) : null
+                  }
+                  onChange={(newValue) =>
+                    handleParamChange('endTime', newValue)
+                  }
+                  slotProps={{ textField: { size: 'small', sx: { flex: 1 } } }}
+                />
+              </Stack>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                sx={{ mb: 2 }}
+              >
+                {/* Host */}
+                <TextField
+                  label={t('stats.host')}
+                  value={queryParams.host || ''}
+                  onChange={(e) => handleParamChange('host', e.target.value)}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                {/* Type */}
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <InputLabel id="type-select-label">
+                    {t('stats.requestType')}
+                  </InputLabel>
+                  <Select
+                    labelId="type-select-label"
+                    id="type-select"
+                    value={queryParams.type || ''}
+                    label={t('stats.requestType')}
+                    onChange={(e) => handleParamChange('type', e.target.value)}
                   >
-                    {t('stats.topHosts', { count: statsData.topHosts.length })}
-                  </Typography>
-                  <Stack spacing={1}>
-                    {statsData.topHosts.map((host, index) => (
-                      <Paper key={index} sx={{ p: 1.5 }}>
-                        <Typography variant="body2">
-                          {host.host} - {host.count} {t('stats.visits')} (
-                          {formatFileSize(host.bytes)})
-                        </Typography>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </Box>
-
-                <Divider />
-
-                {/* Top Hosts Bar Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {t('stats.topHostsVisitCount')}
-                  </Typography>
-                  <BarChart
-                    xAxis={[
-                      { data: statsData.topHosts.map((host) => host.host) },
-                    ]}
-                    series={[
-                      {
-                        data: statsData.topHosts.map((host) => host.count),
-                        label: t('stats.visitCount'),
-                        color: '#1976d2',
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                  />
-                </Box>
-
-                {/* Traffic Comparison Pie Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {t('stats.trafficComparison')}
-                  </Typography>
-                  <PieChart
-                    series={[
-                      {
-                        data: [
-                          {
-                            id: 0,
-                            value: statsData.totalBytesUp as number,
-                            label: t('stats.upload'),
-                          },
-                          {
-                            id: 1,
-                            value: statsData.totalBytesDown as number,
-                            label: t('stats.download'),
-                          },
-                        ],
-                        valueFormatter: (value) =>
-                          formatFileSize(Number(value.value)),
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  />
-                </Box>
-
-                {/* Response Time Line Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {t('stats.responseTimeTrend')}
-                  </Typography>
-                  <BarChart
-                    xAxis={[
-                      {
-                        data: statsData.records.map((data) => data.targetHost),
-                      },
-                    ]}
-                    series={[
-                      {
-                        data: statsData.records.map(
-                          (record) => record.duration,
-                        ),
-                        label: t('stats.responseTime'),
-                        color: '#4caf50',
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                  />
-                </Box>
+                    <MenuItem value="">
+                      <em>{t('stats.all')}</em>
+                    </MenuItem>
+                    <MenuItem value="HTTP">HTTP</MenuItem>
+                    <MenuItem value="HTTPS">HTTPS</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                sx={{ mb: 2 }}
+              >
+                {/* Limit */}
+                <TextField
+                  label={t('stats.limit')}
+                  type="number"
+                  value={queryParams.limit || ''}
+                  onChange={(e) => handleParamChange('limit', e.target.value)}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                {/* Page */}
+                <TextField
+                  label={t('stats.page')}
+                  type="number"
+                  value={queryParams.page || ''}
+                  onChange={(e) => handleParamChange('page', e.target.value)}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                {/* Page Size */}
+                <TextField
+                  label={t('stats.pageSize')}
+                  type="number"
+                  value={queryParams.pageSize || ''}
+                  onChange={(e) =>
+                    handleParamChange('pageSize', e.target.value)
+                  }
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
               </Stack>
             </Paper>
-          )}
-        </CardContent>
-      </Card>
-    </Container>
+
+            {activeConnections !== null && (
+              <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  {t('stats.activeConnections')}
+                </Typography>
+                <Typography variant="h4" color="primary" sx={{ my: 1 }}>
+                  {activeConnections}
+                </Typography>
+              </Paper>
+            )}
+
+            {statsData && (
+              <Paper elevation={2} sx={{ p: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  {t('stats.statsData')}
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t('stats.totalRequests')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {statsData.totalRequests}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t('stats.totalBytesUp')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {formatFileSize(statsData.totalBytesUp)}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t('stats.totalBytesDown')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {formatFileSize(statsData.totalBytesDown)}
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t('stats.avgDuration')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {statsData.avgDuration.toFixed(2)} ms
+                    </Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t('stats.activeConnections')}
+                    </Typography>
+                    <Typography variant="h5">
+                      {statsData.activeConnections}
+                    </Typography>
+                  </Box>
+
+                  <Divider />
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {t('stats.topHosts', {
+                        count: statsData.topHosts.length,
+                      })}
+                    </Typography>
+                    <Stack spacing={1}>
+                      {statsData.topHosts.map((host, index) => (
+                        <Paper key={index} sx={{ p: 1.5 }}>
+                          <Typography variant="body2">
+                            {host.host} - {host.count} {t('stats.visits')} (
+                            {formatFileSize(host.bytes)})
+                          </Typography>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* Top Hosts Bar Chart */}
+                  <Box sx={{ height: 300, mt: 2 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {t('stats.topHostsVisitCount')}
+                    </Typography>
+                    <BarChart
+                      xAxis={[
+                        { data: statsData.topHosts.map((host) => host.host) },
+                      ]}
+                      series={[
+                        {
+                          data: statsData.topHosts.map((host) => host.count),
+                          label: t('stats.visitCount'),
+                          color: '#1976d2',
+                        },
+                      ]}
+                      width={800}
+                      height={300}
+                      margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
+                    />
+                  </Box>
+
+                  {/* Traffic Comparison Pie Chart */}
+                  <Box sx={{ height: 300, mt: 2 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {t('stats.trafficComparison')}
+                    </Typography>
+                    <PieChart
+                      series={[
+                        {
+                          data: [
+                            {
+                              id: 0,
+                              value: statsData.totalBytesUp as number,
+                              label: t('stats.upload'),
+                            },
+                            {
+                              id: 1,
+                              value: statsData.totalBytesDown as number,
+                              label: t('stats.download'),
+                            },
+                          ],
+                          valueFormatter: (value) =>
+                            formatFileSize(Number(value.value)),
+                        },
+                      ]}
+                      width={800}
+                      height={300}
+                      margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    />
+                  </Box>
+
+                  {/* Response Time Line Chart */}
+                  <Box sx={{ height: 300, mt: 2 }}>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {t('stats.responseTimeTrend')}
+                    </Typography>
+                    <BarChart
+                      xAxis={[
+                        {
+                          data: statsData.records.map(
+                            (data) => data.targetHost,
+                          ),
+                        },
+                      ]}
+                      series={[
+                        {
+                          data: statsData.records.map(
+                            (record) => record.duration,
+                          ),
+                          label: t('stats.responseTime'),
+                          color: '#4caf50',
+                        },
+                      ]}
+                      width={800}
+                      height={300}
+                      margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
+                    />
+                  </Box>
+                </Stack>
+              </Paper>
+            )}
+          </CardContent>
+        </Card>
+      </Container>
+    </LocalizationProvider>
   );
 };
 
