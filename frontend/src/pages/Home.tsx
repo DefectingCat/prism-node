@@ -1,64 +1,42 @@
 import {
   Alert,
   Box,
-  Button,
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Container,
   Divider,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StatsData } from '../types/stats';
+import useSWR from 'swr';
 import { useStatsApi } from '../utils/api';
 
 const Home = () => {
   const { getStats, getActiveConnections } = useStatsApi();
   const { t } = useTranslation();
 
-  // 统计数据状态
-  const [statsData, setStatsData] = useState<StatsData | null>(null);
-  const [activeConnections, setActiveConnections] = useState<number | null>(
-    null,
+  // 使用 SWR 自动获取统计数据
+  const {
+    data: statsData,
+    error: statsError,
+  } = useSWR('stats', () =>
+    getStats({
+      page: 1,
+      pageSize: 10,
+    }),
   );
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // 获取统计数据
-  const handleGetStats = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getStats({
-        page: 1,
-        pageSize: 10,
-      });
-      setStatsData(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('stats.errorFetching'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 使用 SWR 自动获取活跃连接数
+  const {
+    data: activeConnections,
+    error: connectionsError,
+  } = useSWR('activeConnections', getActiveConnections);
 
-  // 获取活跃连接数
-  const handleGetActiveConnections = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const count = await getActiveConnections();
-      setActiveConnections(count);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('stats.errorFetching'));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 统一错误信息
+  const error = statsError || connectionsError;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -76,34 +54,7 @@ const Home = () => {
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
-          )}
-
-          <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleGetStats}
-              disabled={loading}
-            >
-              {loading ? (
-                <CircularProgress size={24} />
-              ) : (
-                t('stats.getStatsButton')
-              )}
-            </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={handleGetActiveConnections}
-              disabled={loading}
-            >
-              {loading ? (
-                <CircularProgress size={24} />
-              ) : (
-                t('stats.getActiveConnectionsButton')
-              )}
-            </Button>
-          </Stack>
+                    )}
 
           {activeConnections !== null && (
             <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
@@ -237,10 +188,6 @@ const Home = () => {
           )}
         </CardContent>
       </Card>
-
-      <Typography variant="body2" align="center" color="text.secondary">
-        点击 Vite 和 React 的 logo 以了解更多
-      </Typography>
     </Container>
   );
 };
