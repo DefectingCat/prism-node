@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   CardContent,
+  Chip,
   Container,
   Divider,
   FormControl,
@@ -339,6 +340,48 @@ const Home = () => {
                           <Typography variant="body2">
                             {host.host} - {host.count} {t('stats.visits')} (
                             {formatFileSize(host.bytes)})
+                          </Typography>
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      {t('stats.recentRecords')} ({statsData.records.length})
+                    </Typography>
+                    <Stack spacing={1}>
+                      {statsData.records.slice(0, 5).map((record) => (
+                        <Paper key={record.requestId} sx={{ p: 1.5 }}>
+                          <Typography variant="body2">
+                            <Chip
+                              label={record.type}
+                              size="small"
+                              color={
+                                record.type === 'HTTPS' ? 'success' : 'default'
+                              }
+                              sx={{ mr: 1 }}
+                            />
+                            {record.targetHost}:{record.targetPort} -{' '}
+                            {record.duration}ms
+                            <Chip
+                              label={t(`stats.status.${record.status}`)}
+                              size="small"
+                              color={
+                                record.status === 'success'
+                                  ? 'success'
+                                  : record.status === 'error'
+                                    ? 'error'
+                                    : 'warning'
+                              }
+                              sx={{ ml: 1 }}
+                            />
                           </Typography>
                         </Paper>
                       ))}
