@@ -34,6 +34,13 @@
       "timeout": "Timeout"
     },
     "loading": "Loading...",
-    "errorFetching": "Failed to fetch data"
+    "errorFetching": "Failed to fetch data",
+    "topHostsVisitCount": "Top Hosts Visit Count",
+    "trafficComparison": "Traffic Comparison (Up/Down)",
+    "responseTimeTrend": "Recent Requests - Response Time Trend",
+    "visitCount": "Visit Count",
+    "upload": "Upload",
+    "download": "Download",
+    "responseTime": "Response Time (ms)"
   }
 }

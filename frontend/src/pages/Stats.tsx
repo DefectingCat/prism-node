@@ -3,13 +3,13 @@ import {
   Box,
   Card,
   CardContent,
+  Chip,
   Container,
   Divider,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
-import { BarChart, LineChart, PieChart } from '@mui/x-charts';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import { useStatsApi } from '../utils/api';
@@ -28,7 +28,7 @@ const formatFileSize = (bytes: number): string => {
   return `${size.toFixed(2)} ${units[unitIndex]}`;
 };
 
-const Home = () => {
+const Stats = () => {
   const { getStats, getActiveConnections } = useStatsApi();
   const { t } = useTranslation();
 
@@ -155,90 +155,44 @@ const Home = () => {
 
                 <Divider />
 
-                {/* Top Hosts Bar Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
+                <Box>
                   <Typography
                     variant="subtitle2"
                     color="text.secondary"
                     gutterBottom
                   >
-                    {t('stats.topHostsVisitCount')}
+                    {t('stats.recentRecords')} ({statsData.records.length})
                   </Typography>
-                  <BarChart
-                    xAxis={[
-                      { data: statsData.topHosts.map((_, index) => index) },
-                    ]}
-                    series={[
-                      {
-                        data: statsData.topHosts.map((host) => host.count),
-                        label: t('stats.visitCount'),
-                        color: '#1976d2',
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                  />
-                </Box>
-
-                {/* Traffic Comparison Pie Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {t('stats.trafficComparison')}
-                  </Typography>
-                  <PieChart
-                    series={[
-                      {
-                        data: [
-                          {
-                            id: 0,
-                            value: statsData.totalBytesUp as number,
-                            label: t('stats.upload'),
-                          },
-                          {
-                            id: 1,
-                            value: statsData.totalBytesDown as number,
-                            label: t('stats.download'),
-                          },
-                        ],
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  />
-                </Box>
-
-                {/* Response Time Line Chart */}
-                <Box sx={{ height: 300, mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    gutterBottom
-                  >
-                    {t('stats.responseTimeTrend')}
-                  </Typography>
-                  <LineChart
-                    xAxis={[
-                      { data: statsData.records.map((_, index) => index) },
-                    ]}
-                    series={[
-                      {
-                        data: statsData.records.map(
-                          (record) => record.duration,
-                        ),
-                        label: t('stats.responseTime'),
-                        color: '#4caf50',
-                      },
-                    ]}
-                    width={800}
-                    height={300}
-                    margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                  />
+                  <Stack spacing={1}>
+                    {statsData.records.slice(0, 5).map((record) => (
+                      <Paper key={record.requestId} sx={{ p: 1.5 }}>
+                        <Typography variant="body2">
+                          <Chip
+                            label={record.type}
+                            size="small"
+                            color={
+                              record.type === 'HTTPS' ? 'success' : 'default'
+                            }
+                            sx={{ mr: 1 }}
+                          />
+                          {record.targetHost}:{record.targetPort} -{' '}
+                          {record.duration}ms
+                          <Chip
+                            label={t(`stats.status.${record.status}`)}
+                            size="small"
+                            color={
+                              record.status === 'success'
+                                ? 'success'
+                                : record.status === 'error'
+                                  ? 'error'
+                                  : 'warning'
+                            }
+                            sx={{ ml: 1 }}
+                          />
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Stack>
                 </Box>
               </Stack>
             </Paper>
@@ -249,4 +203,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Stats;

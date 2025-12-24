@@ -36,6 +36,13 @@ export interface TranslationResources {
     };
     loading: string;
     errorFetching: string;
+    topHostsVisitCount: string;
+    trafficComparison: string;
+    responseTimeTrend: string;
+    visitCount: string;
+    upload: string;
+    download: string;
+    responseTime: string;
   };
 }
 

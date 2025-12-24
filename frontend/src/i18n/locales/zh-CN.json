@@ -34,6 +34,13 @@
       "timeout": "超时"
     },
     "loading": "加载中...",
-    "errorFetching": "获取数据失败"
+    "errorFetching": "获取数据失败",
+    "topHostsVisitCount": "热门主机访问次数",
+    "trafficComparison": "流量对比 (上传/下载)",
+    "responseTimeTrend": "最近请求 - 响应时间趋势",
+    "visitCount": "访问次数",
+    "upload": "上传",
+    "download": "下载",
+    "responseTime": "响应时间 (毫秒)"
   }
 }
