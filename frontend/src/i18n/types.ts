@@ -51,6 +51,9 @@ export interface TranslationResources {
     limit: string;
     page: string;
     pageSize: string;
+    autoRefresh: string;
+    refreshInterval: string;
+    refreshIntervalHelper: string;
   };
 }
 

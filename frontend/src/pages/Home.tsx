@@ -59,14 +59,14 @@ const Home = () => {
   const { data: statsData, error: statsError } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
-    { refreshInterval: autoRefresh ? 1000 : 0 }, // 根据开关状态设置刷新间隔
+    { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
   );
 
   // 使用 SWR 自动获取活跃连接数
   const { data: activeConnections, error: connectionsError } = useSWR(
     'activeConnections',
     getActiveConnections,
-    { refreshInterval: autoRefresh ? 1000 : 0 }, // 根据开关状态设置刷新间隔
+    { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
   );
 
   // 统一错误信息
@@ -231,7 +231,6 @@ const Home = () => {
               >
                 {/* Auto Refresh Switch */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <InputLabel>{t('stats.autoRefresh')}</InputLabel>
                   <FormControlLabel
                     control={
                       <Switch
@@ -240,6 +239,7 @@ const Home = () => {
                         size="medium"
                       />
                     }
+                    label={t('stats.autoRefresh')} // 这里添加label属性
                   />
                 </Box>
                 {/* Refresh Interval */}
