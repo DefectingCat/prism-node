@@ -1,7 +1,7 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { lazy, Suspense, useMemo } from 'react';
-import { Route, Routes } from 'react-router';
+import { Navigate, Route, Routes } from 'react-router';
 import './App.css';
 import Navbar from './components/Navbar';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -21,8 +21,9 @@ const AppContent = () => {
         <Navbar />
         <div className="grow overflow-auto">
           <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <Suspense fallback={<div>Loading...</div>}>
                   <Home />
