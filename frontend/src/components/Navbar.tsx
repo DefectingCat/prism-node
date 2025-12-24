@@ -9,9 +9,8 @@ import ListItemText from '@mui/material/ListItemText';
 import SvgIcon from '@mui/material/SvgIcon';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
-import { lazy, Suspense } from 'react';
 import ThemeToggleLoading from './ThemeToggleLoading';
 
 const LazyThemeToggle = lazy(() => import('./ThemeToggle'));
@@ -34,6 +33,10 @@ const Navbar = () => {
 
   const toggleDrawer = () => {
     setDrawerOpen((prev) => !prev);
+  };
+
+  const handleMenuItemClick = () => {
+    setDrawerOpen(false);
   };
 
   return (
@@ -59,20 +62,48 @@ const Navbar = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={toggleDrawer}
-      >
-        <Box
-          sx={{ width: 250 }}
-          role="presentation"
-          onClick={toggleDrawer}
-        >
+      <Drawer anchor="left" open={drawerOpen} onClose={toggleDrawer}>
+        <Box sx={{ width: 250 }} role="presentation">
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="h6" component="div">
+              菜单
+            </Typography>
+          </Box>
           <List>
             <ListItem disablePadding>
-              <ListItemButton component={Link} to="/dashboard" onClick={(e) => e.stopPropagation()}>
+              <ListItemButton
+                component={Link}
+                to="/dashboard"
+                onClick={handleMenuItemClick}
+              >
                 <ListItemText primary="Dashboard" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to="/stats"
+                onClick={handleMenuItemClick}
+              >
+                <ListItemText primary="Statistics" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to="/settings"
+                onClick={handleMenuItemClick}
+              >
+                <ListItemText primary="Settings" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to="/about"
+                onClick={handleMenuItemClick}
+              >
+                <ListItemText primary="About" />
               </ListItemButton>
             </ListItem>
           </List>
