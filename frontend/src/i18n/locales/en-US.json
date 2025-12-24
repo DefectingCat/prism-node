@@ -1,0 +1,15 @@
+{
+  "navbar": {
+    "title": "Prism Node",
+    "menu": "Menu",
+    "dashboard": "Dashboard",
+    "statistics": "Statistics",
+    "settings": "Settings",
+    "about": "About"
+  },
+  "common": {
+    "language": "Language",
+    "chinese": "中文",
+    "english": "English"
+  }
+}

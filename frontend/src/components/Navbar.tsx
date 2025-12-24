@@ -10,7 +10,9 @@ import SvgIcon from '@mui/material/SvgIcon';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import { lazy, Suspense, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import LanguageSwitcher from './LanguageSwitcher';
 import ThemeToggleLoading from './ThemeToggleLoading';
 
 const LazyThemeToggle = lazy(() => import('./ThemeToggle'));
@@ -29,6 +31,7 @@ const MenuIcon = () => (
 );
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const toggleDrawer = () => {
@@ -53,9 +56,10 @@ const Navbar = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Prism Node
+            {t('navbar.title')}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <LanguageSwitcher />
             <Suspense fallback={<ThemeToggleLoading />}>
               <LazyThemeToggle />
             </Suspense>
@@ -66,7 +70,7 @@ const Navbar = () => {
         <Box sx={{ width: 250 }} role="presentation">
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Typography variant="h6" component="div">
-              菜单
+              {t('navbar.menu')}
             </Typography>
           </Box>
           <List>
@@ -76,7 +80,7 @@ const Navbar = () => {
                 to="/dashboard"
                 onClick={handleMenuItemClick}
               >
-                <ListItemText primary="Dashboard" />
+                <ListItemText primary={t('navbar.dashboard')} />
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
@@ -85,7 +89,7 @@ const Navbar = () => {
                 to="/stats"
                 onClick={handleMenuItemClick}
               >
-                <ListItemText primary="Statistics" />
+                <ListItemText primary={t('navbar.statistics')} />
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
@@ -94,7 +98,7 @@ const Navbar = () => {
                 to="/settings"
                 onClick={handleMenuItemClick}
               >
-                <ListItemText primary="Settings" />
+                <ListItemText primary={t('navbar.settings')} />
               </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
@@ -103,7 +107,7 @@ const Navbar = () => {
                 to="/about"
                 onClick={handleMenuItemClick}
               >
-                <ListItemText primary="About" />
+                <ListItemText primary={t('navbar.about')} />
               </ListItemButton>
             </ListItem>
           </List>

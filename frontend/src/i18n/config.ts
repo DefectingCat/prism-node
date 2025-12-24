@@ -1,0 +1,26 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import enUS from './locales/en-US.json';
+import zhCN from './locales/zh-CN.json';
+
+const resources = {
+  'en-US': {
+    translation: enUS,
+  },
+  'zh-CN': {
+    translation: zhCN,
+  },
+};
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: localStorage.getItem('language') || 'zh-CN', // 默认语言为中文
+    fallbackLng: 'zh-CN',
+    interpolation: {
+      escapeValue: false, // React 已经处理了 XSS 防护
+    },
+  });
+
+export default i18n;
