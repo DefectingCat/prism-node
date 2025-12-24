@@ -15,9 +15,10 @@ import {
   Typography,
 } from '@mui/material';
 import { BarChart, PieChart } from '@mui/x-charts';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -68,15 +69,15 @@ const Home = () => {
   // 参数变化处理函数
   const handleParamChange = (
     field: keyof StatsQueryParams,
-    value: string | Date | null,
+    value: string | Dayjs | null,
   ) => {
-    let finalValue: string | number | undefined | Date | null = value;
+    let finalValue: string | number | undefined = undefined;
 
     // 转换时间类型
     if (field === 'startTime' || field === 'endTime') {
-      // 如果是 Date 对象，转换为 Unix 时间戳 (毫秒)
-      if (value instanceof Date) {
-        finalValue = value.getTime();
+      // 如果是 Dayjs 对象，转换为 Unix 时间戳 (毫秒)
+      if (value instanceof dayjs) {
+        finalValue = value.valueOf();
       }
       // 如果是字符串，尝试转换为数值
       else if (typeof value === 'string') {
@@ -101,7 +102,7 @@ const Home = () => {
   };
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         {/* 统计接口测试区域 */}
         <Card sx={{ mb: 3 }}>
@@ -133,9 +134,7 @@ const Home = () => {
                 <DatePicker
                   label={t('stats.startTime')}
                   value={
-                    queryParams.startTime
-                      ? new Date(queryParams.startTime)
-                      : null
+                    queryParams.startTime ? dayjs(queryParams.startTime) : null
                   }
                   onChange={(newValue) =>
                     handleParamChange('startTime', newValue)
@@ -146,7 +145,7 @@ const Home = () => {
                 <DatePicker
                   label={t('stats.endTime')}
                   value={
-                    queryParams.endTime ? new Date(queryParams.endTime) : null
+                    queryParams.endTime ? dayjs(queryParams.endTime) : null
                   }
                   onChange={(newValue) =>
                     handleParamChange('endTime', newValue)
