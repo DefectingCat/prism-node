@@ -4,11 +4,13 @@ import { lazy, Suspense, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import './App.css';
 import Navbar from './components/Navbar';
+import { ApiConfigProvider } from './contexts/ApiConfigContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useThemeMode } from './hooks/useThemeMode';
 import { createMuiTheme } from './theme/muiTheme';
 
 const Home = lazy(() => import('./pages/Home'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 const AppContent = () => {
   const mode = useThemeMode();
@@ -30,6 +32,14 @@ const AppContent = () => {
                 </Suspense>
               }
             />
+            <Route
+              path="/settings"
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Settings />
+                </Suspense>
+              }
+            />
           </Routes>
         </div>
       </main>
@@ -40,7 +50,9 @@ const AppContent = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ApiConfigProvider>
+        <AppContent />
+      </ApiConfigProvider>
     </ThemeProvider>
   );
 }
