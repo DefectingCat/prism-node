@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { Config } from '../config/types';
@@ -9,9 +10,10 @@ import { createStatsRoutes } from './stats-routes';
 
 /**
  * 创建 HTTP 服务器实例
+ * @param {string} staticDir - 静态资源目录路径
  * @returns {Hono} Hono 应用实例
  */
-export function createHttpServer(): Hono {
+export function createHttpServer(staticDir = './html'): Hono {
   const app = new Hono();
 
   // CORS 中间件 - 允许所有域名
@@ -39,6 +41,16 @@ export function createHttpServer(): Hono {
   // 统计信息接口
   app.route('/api', createStatsRoutes());
 
+  // 静态资源托管 - 需要放在最后，避免覆盖 API 路由
+  app.use(
+    '/*',
+    serveStatic({
+      root: staticDir,
+    }),
+  );
+
+  logger.info('Static file serving enabled', { directory: staticDir });
+
   return app;
 }
 
@@ -50,7 +62,8 @@ export function createHttpServer(): Hono {
 export async function startHttpServer(config: Config): Promise<void> {
   // 解析 HTTP 服务器地址
   const httpAddr = parseAddress(config.http_addr);
-  const app = createHttpServer();
+  const staticDir = config.static_dir || './dist/html';
+  const app = createHttpServer(staticDir);
 
   logger.info('Starting HTTP server...', {
     address: config.http_addr,
