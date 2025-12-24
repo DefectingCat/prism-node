@@ -166,7 +166,7 @@ const Home = () => {
                   </Typography>
                   <BarChart
                     xAxis={[
-                      { data: statsData.topHosts.map((_, index) => index) },
+                      { data: statsData.topHosts.map((host) => host.host) },
                     ]}
                     series={[
                       {
@@ -205,6 +205,8 @@ const Home = () => {
                             label: t('stats.download'),
                           },
                         ],
+                        valueFormatter: (value) =>
+                          formatFileSize(Number(value.value)),
                       },
                     ]}
                     width={800}
@@ -224,7 +226,9 @@ const Home = () => {
                   </Typography>
                   <LineChart
                     xAxis={[
-                      { data: statsData.records.map((_, index) => index) },
+                      {
+                        data: statsData.records.map((data) => data.targetHost),
+                      },
                     ]}
                     series={[
                       {
