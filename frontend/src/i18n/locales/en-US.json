@@ -41,6 +41,9 @@
     "all": "All",
     "limit": "Limit",
     "page": "Page",
-    "pageSize": "Page Size"
+    "pageSize": "Page Size",
+    "autoRefresh": "Auto Refresh",
+    "refreshInterval": "Refresh Interval (seconds)",
+    "refreshIntervalHelper": "Set the time interval for automatic data refresh, at least 1 second"
   }
 }

@@ -6,18 +6,20 @@ import {
   Container,
   Divider,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
   Select,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material';
 import { BarChart, PieChart } from '@mui/x-charts';
-import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,18 +51,22 @@ const Home = () => {
     pageSize: 10,
   });
 
+  // 自动刷新控制状态
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshIntervalTime, setRefreshIntervalTime] = useState(1000); // 默认1秒
+
   // 使用 SWR 的 refreshInterval 实现自动请求
   const { data: statsData, error: statsError } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
-    { refreshInterval: 1000 }, // 1秒自动刷新
+    { refreshInterval: autoRefresh ? 1000 : 0 }, // 根据开关状态设置刷新间隔
   );
 
   // 使用 SWR 自动获取活跃连接数
   const { data: activeConnections, error: connectionsError } = useSWR(
     'activeConnections',
     getActiveConnections,
-    { refreshInterval: 1000 }, // 1秒自动刷新
+    { refreshInterval: autoRefresh ? 1000 : 0 }, // 根据开关状态设置刷新间隔
   );
 
   // 统一错误信息
@@ -215,6 +221,38 @@ const Home = () => {
                     handleParamChange('pageSize', e.target.value)
                   }
                   sx={{ flex: 1 }}
+                />
+              </Stack>
+              {/* Auto Refresh Controls */}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                sx={{ alignItems: 'center' }}
+              >
+                {/* Auto Refresh Switch */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <InputLabel>{t('stats.autoRefresh')}</InputLabel>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={autoRefresh}
+                        onChange={(e) => setAutoRefresh(e.target.checked)}
+                        size="medium"
+                      />
+                    }
+                  />
+                </Box>
+                {/* Refresh Interval */}
+                <TextField
+                  label={t('stats.refreshInterval')}
+                  type="number"
+                  value={refreshIntervalTime / 1000} // Display in seconds for user-friendly
+                  onChange={(e) =>
+                    setRefreshIntervalTime(Number(e.target.value) * 1000)
+                  }
+                  sx={{ flex: 1 }}
+                  helperText={t('stats.refreshIntervalHelper')}
+                  inputProps={{ min: 1 }} // At least 1 second
                 />
               </Stack>
             </Paper>
