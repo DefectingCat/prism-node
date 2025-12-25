@@ -14,7 +14,8 @@ class LogStreamHandler {
    */
   addClient(ws: WSContext): void {
     this.clients.add(ws);
-    console.log('Log stream client connected, total clients:', this.clients.size);
+    // 注意：不在这里记录日志，避免与 WebSocketTransport 形成循环依赖
+    // 客户端连接信息应该在 http-server.ts 中的连接处理逻辑中记录
   }
 
   /**
@@ -23,7 +24,8 @@ class LogStreamHandler {
    */
   removeClient(ws: WSContext): void {
     this.clients.delete(ws);
-    console.log('Log stream client disconnected, total clients:', this.clients.size);
+    // 注意：不在这里记录日志，避免与 WebSocketTransport 形成循环依赖
+    // 客户端断开信息应该在 http-server.ts 中的连接处理逻辑中记录
   }
 
   /**

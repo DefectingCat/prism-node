@@ -98,6 +98,15 @@ function handleWebSocketUpgrade(
     // 添加客户端到日志流处理器
     logStreamHandler.addClient(wsContext);
 
+    // 记录连接信息（放在这里而非 handler 内部，避免循环）
+    // 使用 setImmediate 异步记录，确保 logger 已完全初始化
+    setImmediate(() => {
+      logger.info('WebSocket log stream client connected', {
+        clientCount: logStreamHandler.getClientCount(),
+        remoteAddress: request.socket.remoteAddress,
+      });
+    });
+
     // 发送连接成功消息
     ws.send(
       JSON.stringify({
@@ -110,15 +119,26 @@ function handleWebSocketUpgrade(
     // 监听连接关闭事件
     ws.on('close', () => {
       logStreamHandler.removeClient(wsContext);
+      // 异步记录断开信息，避免循环
+      setImmediate(() => {
+        logger.info('WebSocket log stream client disconnected', {
+          clientCount: logStreamHandler.getClientCount(),
+        });
+      });
     });
 
     // 监听连接错误事件
     ws.on('error', (error: Error) => {
-      logger.error('WebSocket error', {
-        error: error.message,
-        pathname,
-      });
+      // 先移除客户端，避免在日志记录时继续广播
       logStreamHandler.removeClient(wsContext);
+      // 异步记录错误，避免循环依赖
+      setImmediate(() => {
+        logger.error('WebSocket connection error', {
+          error: error.message,
+          pathname,
+          clientCount: logStreamHandler.getClientCount(),
+        });
+      });
     });
   });
 }

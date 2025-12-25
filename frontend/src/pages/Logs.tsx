@@ -5,6 +5,7 @@ import { Box, Paper, Typography, Alert } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useApiConfig } from '../hooks/useApiConfig';
 import 'xterm/css/xterm.css';
+import { isUrl } from '../utils';
 
 const Logs = () => {
   const { t } = useTranslation();
@@ -72,8 +73,11 @@ const Logs = () => {
     terminal.writeln('');
 
     // 建立 WebSocket 连接
+    const isValidUrl = isUrl(baseUrl);
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
-    const wsHost = baseUrl.replace(/^https?:\/\//, '');
+    const wsHost = isValidUrl
+      ? baseUrl.replace(/^https?:\/\//, '')
+      : `${window.location.host}${baseUrl}`;
     const wsUrl = `${wsProtocol}://${wsHost}/logs/stream`;
 
     const ws = new WebSocket(wsUrl);
@@ -114,7 +118,7 @@ const Logs = () => {
     ws.onclose = () => {
       setConnectionStatus('disconnected');
       terminal.writeln('');
-      terminal.writeln('\x1b[1;33m⚠ Disconnected from log stream\x1b[0m');
+      terminal.writeln('\x1b[1;33m! Disconnected from log stream\x1b[0m');
     };
 
     // 窗口大小调整时重新适配终端
