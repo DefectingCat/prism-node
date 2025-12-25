@@ -58,7 +58,11 @@ const Home = () => {
   const [refreshIntervalTime, setRefreshIntervalTime] = useState(1000); // 默认1秒
 
   // 使用 SWR 的 refreshInterval 实现自动请求
-  const { data: statsData, error, mutate } = useSWR(
+  const {
+    data: statsData,
+    error,
+    mutate,
+  } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
     { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
@@ -189,7 +193,10 @@ const Home = () => {
                   options={[10, 20, 50, 100]}
                   value={queryParams.pageSize || null}
                   onChange={(_, newValue) => {
-                    const value = typeof newValue === 'number' ? String(newValue) : newValue || '';
+                    const value =
+                      typeof newValue === 'number'
+                        ? String(newValue)
+                        : newValue || '';
                     handleParamChange('pageSize', value);
                   }}
                   onInputChange={(_, newInputValue) => {
@@ -279,7 +286,7 @@ const Home = () => {
                   slotProps={{ htmlInput: { min: 100 } }}
                   sx={{ flex: 1 }}
                   helperText={t('stats.refreshIntervalHelper')}
-                  size='small'
+                  size="small"
                 />
               </Stack>
             </Paper>

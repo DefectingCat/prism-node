@@ -20,6 +20,7 @@
     "@types/react-router-dom": "^5.3.3",
     "axios": "^1.13.2",
     "dayjs": "^1.11.19",
+    "es-toolkit": "^1.43.0",
     "i18next": "^25.7.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
