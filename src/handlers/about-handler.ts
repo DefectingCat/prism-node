@@ -21,7 +21,9 @@ class AboutHandler {
       // zh 或 zh-CN 读取中文版 README-zh.md
       // 其他情况（包括 en、en-US 或无参数）读取英文版 README.md
       const fileName =
-        language === 'zh' || language === 'zh-CN' ? 'README-zh.md' : 'README.md';
+        language === 'zh' || language === 'zh-CN'
+          ? 'README-zh.md'
+          : 'README.md';
       const readmePath = join(process.cwd(), 'dist', fileName);
 
       logger.debug('Reading README file', { path: readmePath, language });

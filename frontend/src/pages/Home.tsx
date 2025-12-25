@@ -54,6 +54,14 @@ const Home = () => {
     pageSize: 10,
   });
 
+  const [needShowSkeleton, setNeedShowSkeleton] = useState(false);
+  const updateQueryParams = (
+    callback: (params: Partial<StatsQueryParams>) => Partial<StatsQueryParams>,
+  ) => {
+    setQueryParams(callback);
+    setNeedShowSkeleton(true);
+  };
+
   // 自动刷新控制状态
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshIntervalTime, setRefreshIntervalTime] = useState(1000); // 默认1秒
@@ -71,6 +79,9 @@ const Home = () => {
     {
       refreshInterval: autoRefresh ? refreshIntervalTime : 0, // 根据开关状态和设置的间隔时间刷新
       keepPreviousData: true, // 保留之前的数据，自动刷新时不会清空
+      onSuccess() {
+        setNeedShowSkeleton(false);
+      },
     },
   );
 
@@ -110,7 +121,7 @@ const Home = () => {
       finalValue = numericValue === '' ? undefined : numericValue;
     }
 
-    setQueryParams((prev) => ({
+    updateQueryParams((prev) => ({
       ...prev,
       [field]: finalValue as string | number | undefined,
     }));
@@ -141,7 +152,8 @@ const Home = () => {
   // 判断是否为自动刷新：有数据且正在验证中
   const isAutoRefreshing = autoRefresh && statsData && isValidating;
   // 最终是否显示骨架屏：首次加载或手动调节参数时显示，自动刷新时不显示
-  const showSkeleton = isInitialLoading && !isAutoRefreshing;
+  const showSkeleton =
+    (isInitialLoading && !isAutoRefreshing) || needShowSkeleton;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -184,7 +196,7 @@ const Home = () => {
                     field: {
                       clearable: true,
                       onClear: () =>
-                        setQueryParams((d) => ({
+                        updateQueryParams((d) => ({
                           ...d,
                           startTime: undefined,
                           endTime: undefined,
@@ -308,7 +320,12 @@ const Home = () => {
             {showSkeleton ? (
               <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
                 <Skeleton variant="text" width="40%" height={20} />
-                <Skeleton variant="text" width="15%" height={48} sx={{ my: 1 }} />
+                <Skeleton
+                  variant="text"
+                  width="15%"
+                  height={48}
+                  sx={{ my: 1 }}
+                />
               </Paper>
             ) : (
               statsData?.activeConnections !== null && (
@@ -326,7 +343,12 @@ const Home = () => {
             {/* 统计数据区域 */}
             {showSkeleton ? (
               <Paper elevation={2} sx={{ p: 2 }}>
-                <Skeleton variant="text" width="25%" height={32} sx={{ mb: 1 }} />
+                <Skeleton
+                  variant="text"
+                  width="25%"
+                  height={32}
+                  sx={{ mb: 1 }}
+                />
                 <Divider sx={{ mb: 2 }} />
 
                 <Stack spacing={2}>
@@ -342,7 +364,12 @@ const Home = () => {
 
                   {/* Top Hosts 列表 */}
                   <Box>
-                    <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                    <Skeleton
+                      variant="text"
+                      width="35%"
+                      height={20}
+                      sx={{ mb: 1 }}
+                    />
                     <Stack spacing={1}>
                       {[1, 2, 3].map((item) => (
                         <Paper key={item} sx={{ p: 1.5 }}>
@@ -356,7 +383,12 @@ const Home = () => {
 
                   {/* 最近记录 */}
                   <Box>
-                    <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                    <Skeleton
+                      variant="text"
+                      width="35%"
+                      height={20}
+                      sx={{ mb: 1 }}
+                    />
                     <Stack spacing={1}>
                       {[1, 2, 3, 4, 5].map((item) => (
                         <Paper key={item} sx={{ p: 1.5 }}>
@@ -371,7 +403,12 @@ const Home = () => {
                   {/* 图表骨架屏 */}
                   {[1, 2, 3].map((item) => (
                     <Box key={item} sx={{ height: 300, mt: 2 }}>
-                      <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                      <Skeleton
+                        variant="text"
+                        width="40%"
+                        height={20}
+                        sx={{ mb: 1 }}
+                      />
                       <Skeleton
                         variant="rounded"
                         width="100%"
@@ -391,212 +428,214 @@ const Home = () => {
                   <Divider sx={{ mb: 2 }} />
 
                   <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t('stats.totalRequests')}
-                    </Typography>
-                    <Typography variant="h5">
-                      {statsData.totalRequests}
-                    </Typography>
-                  </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('stats.totalRequests')}
+                      </Typography>
+                      <Typography variant="h5">
+                        {statsData.totalRequests}
+                      </Typography>
+                    </Box>
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t('stats.totalBytesUp')}
-                    </Typography>
-                    <Typography variant="h5">
-                      {formatFileSize(statsData.totalBytesUp)}
-                    </Typography>
-                  </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('stats.totalBytesUp')}
+                      </Typography>
+                      <Typography variant="h5">
+                        {formatFileSize(statsData.totalBytesUp)}
+                      </Typography>
+                    </Box>
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t('stats.totalBytesDown')}
-                    </Typography>
-                    <Typography variant="h5">
-                      {formatFileSize(statsData.totalBytesDown)}
-                    </Typography>
-                  </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('stats.totalBytesDown')}
+                      </Typography>
+                      <Typography variant="h5">
+                        {formatFileSize(statsData.totalBytesDown)}
+                      </Typography>
+                    </Box>
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t('stats.avgDuration')}
-                    </Typography>
-                    <Typography variant="h5">
-                      {statsData.avgDuration.toFixed(2)} ms
-                    </Typography>
-                  </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('stats.avgDuration')}
+                      </Typography>
+                      <Typography variant="h5">
+                        {statsData.avgDuration.toFixed(2)} ms
+                      </Typography>
+                    </Box>
 
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t('stats.activeConnections')}
-                    </Typography>
-                    <Typography variant="h5">
-                      {statsData.activeConnections.total}
-                    </Typography>
-                  </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        {t('stats.activeConnections')}
+                      </Typography>
+                      <Typography variant="h5">
+                        {statsData.activeConnections.total}
+                      </Typography>
+                    </Box>
 
-                  <Divider />
+                    <Divider />
 
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      {t('stats.topHosts', {
-                        count: statsData.topHosts.length,
-                      })}
-                    </Typography>
-                    <Stack spacing={1}>
-                      {statsData.topHosts.map((host, index) => (
-                        <Paper key={index} sx={{ p: 1.5 }}>
-                          <Typography variant="body2">
-                            {host.host} - {host.count} {t('stats.visits')} (
-                            {formatFileSize(host.bytes)})
-                          </Typography>
-                        </Paper>
-                      ))}
-                    </Stack>
-                  </Box>
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        {t('stats.topHosts', {
+                          count: statsData.topHosts.length,
+                        })}
+                      </Typography>
+                      <Stack spacing={1}>
+                        {statsData.topHosts.map((host, index) => (
+                          <Paper key={index} sx={{ p: 1.5 }}>
+                            <Typography variant="body2">
+                              {host.host} - {host.count} {t('stats.visits')} (
+                              {formatFileSize(host.bytes)})
+                            </Typography>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </Box>
 
-                  <Divider />
+                    <Divider />
 
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      {t('stats.recentRecords')} ({statsData.records.length})
-                    </Typography>
-                    <Stack spacing={1}>
-                      {statsData.records.slice(0, 5).map((record) => (
-                        <Paper key={record.requestId} sx={{ p: 1.5 }}>
-                          <Typography variant="body2">
-                            <Chip
-                              label={record.type}
-                              size="small"
-                              color={
-                                record.type === 'HTTPS' ? 'success' : 'default'
-                              }
-                              sx={{ mr: 1 }}
-                            />
-                            {record.targetHost}:{record.targetPort} -{' '}
-                            {record.duration}ms
-                            <Chip
-                              label={t(`stats.status.${record.status}`)}
-                              size="small"
-                              color={
-                                record.status === 'success'
-                                  ? 'success'
-                                  : record.status === 'error'
-                                    ? 'error'
-                                    : 'warning'
-                              }
-                              sx={{ ml: 1 }}
-                            />
-                          </Typography>
-                        </Paper>
-                      ))}
-                    </Stack>
-                  </Box>
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        {t('stats.recentRecords')} ({statsData.records.length})
+                      </Typography>
+                      <Stack spacing={1}>
+                        {statsData.records.slice(0, 5).map((record) => (
+                          <Paper key={record.requestId} sx={{ p: 1.5 }}>
+                            <Typography variant="body2">
+                              <Chip
+                                label={record.type}
+                                size="small"
+                                color={
+                                  record.type === 'HTTPS'
+                                    ? 'success'
+                                    : 'default'
+                                }
+                                sx={{ mr: 1 }}
+                              />
+                              {record.targetHost}:{record.targetPort} -{' '}
+                              {record.duration}ms
+                              <Chip
+                                label={t(`stats.status.${record.status}`)}
+                                size="small"
+                                color={
+                                  record.status === 'success'
+                                    ? 'success'
+                                    : record.status === 'error'
+                                      ? 'error'
+                                      : 'warning'
+                                }
+                                sx={{ ml: 1 }}
+                              />
+                            </Typography>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    </Box>
 
-                  <Divider />
+                    <Divider />
 
-                  {/* Top Hosts Bar Chart */}
-                  <Box sx={{ height: 300, mt: 2 }}>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      {t('stats.topHostsVisitCount')}
-                    </Typography>
-                    <BarChart
-                      xAxis={[
-                        { data: statsData.topHosts.map((host) => host.host) },
-                      ]}
-                      series={[
-                        {
-                          data: statsData.topHosts.map((host) => host.count),
-                          label: t('stats.visitCount'),
-                          color: '#1976d2',
-                        },
-                      ]}
-                      width={800}
-                      height={300}
-                      margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                    />
-                  </Box>
+                    {/* Top Hosts Bar Chart */}
+                    <Box sx={{ height: 300, mt: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        {t('stats.topHostsVisitCount')}
+                      </Typography>
+                      <BarChart
+                        xAxis={[
+                          { data: statsData.topHosts.map((host) => host.host) },
+                        ]}
+                        series={[
+                          {
+                            data: statsData.topHosts.map((host) => host.count),
+                            label: t('stats.visitCount'),
+                            color: '#1976d2',
+                          },
+                        ]}
+                        width={800}
+                        height={300}
+                        margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
+                      />
+                    </Box>
 
-                  {/* Traffic Comparison Pie Chart */}
-                  <Box sx={{ height: 300, mt: 2 }}>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      {t('stats.trafficComparison')}
-                    </Typography>
-                    <PieChart
-                      series={[
-                        {
-                          data: [
-                            {
-                              id: 0,
-                              value: statsData.totalBytesUp as number,
-                              label: t('stats.upload'),
-                            },
-                            {
-                              id: 1,
-                              value: statsData.totalBytesDown as number,
-                              label: t('stats.download'),
-                            },
-                          ],
-                          valueFormatter: (value) =>
-                            formatFileSize(Number(value.value)),
-                        },
-                      ]}
-                      width={800}
-                      height={300}
-                      margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    />
-                  </Box>
+                    {/* Traffic Comparison Pie Chart */}
+                    <Box sx={{ height: 300, mt: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        {t('stats.trafficComparison')}
+                      </Typography>
+                      <PieChart
+                        series={[
+                          {
+                            data: [
+                              {
+                                id: 0,
+                                value: statsData.totalBytesUp as number,
+                                label: t('stats.upload'),
+                              },
+                              {
+                                id: 1,
+                                value: statsData.totalBytesDown as number,
+                                label: t('stats.download'),
+                              },
+                            ],
+                            valueFormatter: (value) =>
+                              formatFileSize(Number(value.value)),
+                          },
+                        ]}
+                        width={800}
+                        height={300}
+                        margin={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      />
+                    </Box>
 
-                  {/* Response Time Line Chart */}
-                  <Box sx={{ height: 300, mt: 2 }}>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom
-                    >
-                      {t('stats.responseTimeTrend')}
-                    </Typography>
-                    <BarChart
-                      xAxis={[
-                        {
-                          data: statsData.records.map(
-                            (data) => data.targetHost,
-                          ),
-                        },
-                      ]}
-                      series={[
-                        {
-                          data: statsData.records.map(
-                            (record) => record.duration,
-                          ),
-                          label: t('stats.responseTime'),
-                          color: '#4caf50',
-                        },
-                      ]}
-                      width={800}
-                      height={300}
-                      margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
-                    />
-                  </Box>
-                </Stack>
-              </Paper>
+                    {/* Response Time Line Chart */}
+                    <Box sx={{ height: 300, mt: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        {t('stats.responseTimeTrend')}
+                      </Typography>
+                      <BarChart
+                        xAxis={[
+                          {
+                            data: statsData.records.map(
+                              (data) => data.targetHost,
+                            ),
+                          },
+                        ]}
+                        series={[
+                          {
+                            data: statsData.records.map(
+                              (record) => record.duration,
+                            ),
+                            label: t('stats.responseTime'),
+                            color: '#4caf50',
+                          },
+                        ]}
+                        width={800}
+                        height={300}
+                        margin={{ top: 10, bottom: 50, left: 50, right: 10 }}
+                      />
+                    </Box>
+                  </Stack>
+                </Paper>
               )
             )}
           </CardContent>

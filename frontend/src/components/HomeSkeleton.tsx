@@ -78,7 +78,12 @@ const HomeSkeleton = () => {
 
               {/* Top Hosts 列表 */}
               <Box>
-                <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                <Skeleton
+                  variant="text"
+                  width="35%"
+                  height={20}
+                  sx={{ mb: 1 }}
+                />
                 <Stack spacing={1}>
                   {[1, 2, 3].map((item) => (
                     <Paper key={item} sx={{ p: 1.5 }}>
@@ -92,7 +97,12 @@ const HomeSkeleton = () => {
 
               {/* 最近记录 */}
               <Box>
-                <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                <Skeleton
+                  variant="text"
+                  width="35%"
+                  height={20}
+                  sx={{ mb: 1 }}
+                />
                 <Stack spacing={1}>
                   {[1, 2, 3, 4, 5].map((item) => (
                     <Paper key={item} sx={{ p: 1.5 }}>
@@ -107,7 +117,12 @@ const HomeSkeleton = () => {
               {/* 图表骨架屏 */}
               {[1, 2, 3].map((item) => (
                 <Box key={item} sx={{ height: 300, mt: 2 }}>
-                  <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                  <Skeleton
+                    variant="text"
+                    width="40%"
+                    height={20}
+                    sx={{ mb: 1 }}
+                  />
                   <Skeleton
                     variant="rounded"
                     width="100%"

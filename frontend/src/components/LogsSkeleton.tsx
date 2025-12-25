@@ -1,7 +1,10 @@
 import { Box, Paper, Skeleton, Stack } from '@mui/material';
 
 // 预生成固定宽度数组
-const TERMINAL_LINE_WIDTHS = Array.from({ length: 30 }, () => Math.random() * 30 + 60);
+const TERMINAL_LINE_WIDTHS = Array.from(
+  { length: 30 },
+  () => Math.random() * 30 + 60,
+);
 
 const LogsSkeleton = () => {
   return (

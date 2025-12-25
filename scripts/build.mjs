@@ -14,10 +14,10 @@
 import { spawn } from 'node:child_process';
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   readdirSync,
   statSync,
-  existsSync,
 } from 'node:fs';
 import { join } from 'node:path';
 
