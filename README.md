@@ -7,6 +7,7 @@ A lightweight HTTP/HTTPS proxy server that forwards traffic to a SOCKS5 proxy.
 - **Dual Protocol Support**: Handles both HTTP and HTTPS traffic
 - **SOCKS5 Integration**: Forwards all proxy requests to a configured SOCKS5 server
 - **Real-time Statistics**: Collects and displays proxy usage metrics
+- **Real-time Log Streaming**: WebSocket-based live log streaming
 - **Web Interface**: Built-in Hono HTTP server with a simple frontend
 - **Configurable**: Easy-to-use JSON configuration
 - **Graceful Shutdown**: Properly cleans up resources on exit
@@ -58,6 +59,36 @@ pnpm run build:bin
 ```
 
 This will create a standalone executable named `prism-node`.
+
+### Real-time Log Streaming
+
+Connect to the WebSocket endpoint to receive real-time log streams:
+
+```bash
+# Using the provided test script
+node test-websocket.mjs
+
+# Or connect directly with any WebSocket client
+ws://127.0.0.1:3000/api/logs/stream
+```
+
+The log stream endpoint broadcasts all application logs in JSON format, including:
+- Log level (info, error, warn, debug)
+- Timestamp
+- Message content
+- Additional metadata
+
+**Example log message:**
+```json
+{
+  "timestamp": "2025-12-25T11:00:00.000Z",
+  "level": "info",
+  "message": "HTTP Request",
+  "service": "prism-node",
+  "method": "GET",
+  "url": "http://127.0.0.1:3000/api/stats"
+}
+```
 
 ## Tech Stack
 

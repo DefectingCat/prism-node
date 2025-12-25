@@ -1,5 +1,9 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import {
+  WebSocketTransport,
+  logStreamHandler,
+} from '../handlers/log-stream-handler';
 
 /**
  * Winston logger configuration for the Prism Node proxy application
@@ -39,6 +43,9 @@ const logger = winston.createLogger({
       maxFiles: '14d', // 保留 30 天
       zippedArchive: true, // 压缩归档文件
     }),
+
+    // WebSocket transport for real-time log streaming
+    new WebSocketTransport(logStreamHandler),
   ],
 });
 

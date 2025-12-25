@@ -2,7 +2,12 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import type { IncomingMessage } from 'node:http';
+import type { Duplex } from 'node:stream';
+import type { WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
 import type { Config } from '../config/types';
+import { logStreamHandler } from '../handlers/log-stream-handler';
 import logger from '../utils/logger';
 import { parseAddress } from '../utils/utils';
 import { errorHandler, requestLogger } from './middlewares';
@@ -78,27 +83,83 @@ export async function startHttpServer(config: Config): Promise<void> {
 
   try {
     // 启动服务器
-    const server = serve({
-      fetch: app.fetch,
-      port: httpAddr.port,
-      hostname: httpAddr.host,
+    const server = serve(
+      {
+        fetch: app.fetch,
+        port: httpAddr.port,
+        hostname: httpAddr.host,
+      },
+      () => {
+        logger.info('HTTP server started successfully', {
+          address: config.http_addr,
+          host: httpAddr.host,
+          port: httpAddr.port,
+          pid: process.pid,
+        });
+      },
+    );
+
+    // Create WebSocket server for log streaming
+    const wss = new WebSocketServer({ noServer: true });
+
+    // Handle WebSocket upgrade
+    server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+      const pathname = new URL(
+        request.url || '',
+        `http://${request.headers.host}`,
+      ).pathname;
+
+      if (pathname === '/api/logs/stream') {
+        wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
+          wss.emit('connection', ws, request);
+
+          // Convert native WebSocket to a simplified interface compatible with our handler
+          const wsContext = {
+            send: (data: string) => ws.send(data),
+            readyState: ws.readyState,
+          } as any;
+
+          logStreamHandler.addClient(wsContext);
+
+          ws.send(
+            JSON.stringify({
+              type: 'connected',
+              message: 'Log stream connected',
+              timestamp: new Date().toISOString(),
+            }),
+          );
+
+          ws.on('close', () => {
+            logStreamHandler.removeClient(wsContext);
+          });
+
+          ws.on('error', (error: Error) => {
+            logger.error('WebSocket error', {
+              error: error.message,
+              pathname,
+            });
+            logStreamHandler.removeClient(wsContext);
+          });
+        });
+      } else {
+        socket.destroy();
+      }
     });
 
-    logger.info('HTTP server started successfully', {
-      address: config.http_addr,
-      host: httpAddr.host,
-      port: httpAddr.port,
-      pid: process.pid,
+    logger.info('WebSocket server initialized for log streaming', {
+      endpoint: '/api/logs/stream',
     });
 
     // 监听进程退出事件
     process.on('SIGTERM', () => {
       logger.info('Received SIGTERM, shutting down HTTP server gracefully');
+      wss.close();
       server.close?.();
     });
 
     process.on('SIGINT', () => {
       logger.info('Received SIGINT, shutting down HTTP server gracefully');
+      wss.close();
       server.close?.();
     });
   } catch (error) {

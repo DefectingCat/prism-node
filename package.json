@@ -26,6 +26,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
     "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
     "pkg": "^5.8.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
@@ -37,6 +38,7 @@
     "socks": "^2.8.7",
     "sqlite3": "^5.1.7",
     "winston": "^3.18.3",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.18.3"
   }
 }
