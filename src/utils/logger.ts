@@ -1,8 +1,8 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import {
-  WebSocketTransport,
   logStreamHandler,
+  WebSocketTransport,
 } from '../handlers/log-stream-handler';
 
 /**

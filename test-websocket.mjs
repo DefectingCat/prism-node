@@ -32,13 +32,14 @@ ws.on('message', (data) => {
       const msg = message.message || '';
 
       // Color-code based on log level
-      const levelEmoji = {
-        ERROR: '❌',
-        WARN: '⚠️',
-        INFO: 'ℹ️',
-        DEBUG: '🔍',
-        VERBOSE: '📝'
-      }[level] || '📋';
+      const levelEmoji =
+        {
+          ERROR: '❌',
+          WARN: '⚠️',
+          INFO: 'ℹ️',
+          DEBUG: '🔍',
+          VERBOSE: '📝',
+        }[level] || '📋';
 
       console.log(`${levelEmoji} [${level}] ${timestamp}`);
       console.log(`   ${msg}`);

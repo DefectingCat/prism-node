@@ -1,9 +1,9 @@
+import type { IncomingMessage } from 'node:http';
+import type { Duplex } from 'node:stream';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { IncomingMessage } from 'node:http';
-import type { Duplex } from 'node:stream';
 import type { WebSocket } from 'ws';
 import { WebSocketServer } from 'ws';
 import type { Config } from '../config/types';
@@ -65,6 +65,65 @@ export function createHttpServer(staticDir = './html'): Hono {
 }
 
 /**
+ * 处理 WebSocket 连接升级
+ * @param wss - WebSocket 服务器实例
+ * @param request - HTTP 请求对象
+ * @param socket - 网络套接字
+ * @param head - 升级请求的第一个数据包
+ * @param pathname - 请求路径
+ */
+function handleWebSocketUpgrade(
+  wss: WebSocketServer,
+  request: IncomingMessage,
+  socket: Duplex,
+  head: Buffer,
+  pathname: string,
+): void {
+  // 验证路径是否为日志流端点
+  if (pathname !== '/api/logs/stream') {
+    socket.destroy();
+    return;
+  }
+
+  // 执行 WebSocket 升级
+  wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
+    wss.emit('connection', ws, request);
+
+    // 转换原生 WebSocket 为与处理器兼容的简化接口
+    const wsContext = {
+      send: (data: string) => ws.send(data),
+      readyState: ws.readyState,
+    } as any;
+
+    // 添加客户端到日志流处理器
+    logStreamHandler.addClient(wsContext);
+
+    // 发送连接成功消息
+    ws.send(
+      JSON.stringify({
+        type: 'connected',
+        message: 'Log stream connected',
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    // 监听连接关闭事件
+    ws.on('close', () => {
+      logStreamHandler.removeClient(wsContext);
+    });
+
+    // 监听连接错误事件
+    ws.on('error', (error: Error) => {
+      logger.error('WebSocket error', {
+        error: error.message,
+        pathname,
+      });
+      logStreamHandler.removeClient(wsContext);
+    });
+  });
+}
+
+/**
  * 启动 HTTP 服务器
  * @param {Config} config - 服务器配置
  * @returns {Promise<void>}
@@ -99,52 +158,23 @@ export async function startHttpServer(config: Config): Promise<void> {
       },
     );
 
-    // Create WebSocket server for log streaming
+    // 创建 WebSocket 服务器用于日志流传输
     const wss = new WebSocketServer({ noServer: true });
 
-    // Handle WebSocket upgrade
-    server.on('upgrade', (request: IncomingMessage, socket: Duplex, head: Buffer) => {
-      const pathname = new URL(
-        request.url || '',
-        `http://${request.headers.host}`,
-      ).pathname;
+    // 处理 WebSocket 升级请求
+    server.on(
+      'upgrade',
+      (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+        // 解析请求路径
+        const pathname = new URL(
+          request.url || '',
+          `http://${request.headers.host}`,
+        ).pathname;
 
-      if (pathname === '/api/logs/stream') {
-        wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-          wss.emit('connection', ws, request);
-
-          // Convert native WebSocket to a simplified interface compatible with our handler
-          const wsContext = {
-            send: (data: string) => ws.send(data),
-            readyState: ws.readyState,
-          } as any;
-
-          logStreamHandler.addClient(wsContext);
-
-          ws.send(
-            JSON.stringify({
-              type: 'connected',
-              message: 'Log stream connected',
-              timestamp: new Date().toISOString(),
-            }),
-          );
-
-          ws.on('close', () => {
-            logStreamHandler.removeClient(wsContext);
-          });
-
-          ws.on('error', (error: Error) => {
-            logger.error('WebSocket error', {
-              error: error.message,
-              pathname,
-            });
-            logStreamHandler.removeClient(wsContext);
-          });
-        });
-      } else {
-        socket.destroy();
-      }
-    });
+        // 委托给专门的 WebSocket 升级处理函数
+        handleWebSocketUpgrade(wss, request, socket, head, pathname);
+      },
+    );
 
     logger.info('WebSocket server initialized for log streaming', {
       endpoint: '/api/logs/stream',

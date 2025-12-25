@@ -26,7 +26,8 @@ export function createStatsRoutes() {
       message:
         'WebSocket endpoint. Connect using ws:// protocol to stream logs in real-time.',
       endpoint: '/api/logs/stream',
-      usage: 'Use a WebSocket client to connect to ws://host:port/api/logs/stream',
+      usage:
+        'Use a WebSocket client to connect to ws://host:port/api/logs/stream',
     });
   });
 
