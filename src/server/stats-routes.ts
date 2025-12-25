@@ -8,7 +8,7 @@ import { statsHandler } from '../handlers/stats-handler';
  * - GET /stats - Retrieves comprehensive proxy statistics with optional filtering
  * - GET /stats/active - Gets current active connection count
  *
- * @returns {Hono} Configured Hono router with statistics endpoints
+ * @returns Configured Hono router with statistics endpoints
  */
 export function createStatsRoutes() {
   const app = new Hono();

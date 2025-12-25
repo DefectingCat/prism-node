@@ -2,17 +2,21 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react({
       // 启用 React 开发工具的性能优化
-      babel: {
-        plugins: [
-          // 生产环境移除 console
-          ['transform-remove-console', { exclude: ['error', 'warn'] }],
-        ],
-      },
+      babel: isProduction
+        ? {
+            plugins: [
+              // 生产环境移除 console
+              ['transform-remove-console', { exclude: ['error', 'warn'] }],
+            ],
+          }
+        : {},
     }),
     tailwindcss(),
   ],

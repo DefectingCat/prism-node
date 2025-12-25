@@ -10,7 +10,7 @@ import { createStatsRoutes } from './stats-routes';
 
 /**
  * 创建 HTTP 服务器实例
- * @param {string} staticDir - 静态资源目录路径
+ * @param staticDir - 静态资源目录路径
  * @returns {Hono} Hono 应用实例
  */
 export function createHttpServer(staticDir = './html'): Hono {

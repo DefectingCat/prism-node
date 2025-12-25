@@ -51,14 +51,37 @@ export interface StatsData {
   topHosts: TopHost[];
   records: AccessRecord[];
   pagination: Pagination;
-  activeConnections: number;
+  activeConnections: ActiveConnections;
+}
+
+export interface ActiveConnections {
+  connections: ActiveConnection[];
+  total: number;
+}
+
+export interface ActiveConnection {
+  requestId: string;
+  record: ActiveConnectionRecord;
+  startTime: number;
+  bytesUp: number;
+  bytesDown: number;
+}
+
+export interface ActiveConnectionRecord {
+  timestamp: number;
+  requestId: string;
+  type: string;
+  targetHost: string;
+  targetPort: number;
+  clientIP: string;
+  status: string;
 }
 
 /**
  * 活跃连接响应数据
  */
 export interface ActiveConnectionsData {
-  activeConnections: number;
+  activeConnections: ActiveConnections;
 }
 
 /**

@@ -144,7 +144,6 @@ export class StatsCollector {
       endTime?: number;
       host?: string;
       type?: 'HTTP' | 'HTTPS';
-      limit?: number;
       page?: number;
       pageSize?: number;
     } = {},
@@ -162,9 +161,7 @@ export class StatsCollector {
    * @param options 查询选项
    * @returns 分页后的活跃连接列表和总数
    */
-  getActiveConnections(
-    options: { limit?: number; page?: number; pageSize?: number } = {},
-  ): {
+  getActiveConnections(options: { page?: number; pageSize?: number } = {}): {
     total: number;
     connections: Array<{
       requestId: string;
@@ -187,12 +184,9 @@ export class StatsCollector {
     const pageSize = options.pageSize
       ? Math.min(1000, Math.max(1, Number(options.pageSize)))
       : 1000;
-    const limit = options.limit
-      ? Math.min(1000, Math.max(1, Number(options.limit)))
-      : pageSize;
 
     const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + limit;
+    const endIndex = startIndex + pageSize;
 
     return {
       total,

@@ -15,7 +15,6 @@ export class StatsHandler {
    * - endTime: Filter by end timestamp
    * - host: Filter by target hostname
    * - type: Filter by connection type (HTTP/HTTPS)
-   * - limit: Limit number of records
    * - page: Page number for pagination
    * - pageSize: Records per page
    *
@@ -31,7 +30,6 @@ export class StatsHandler {
         endTime?: number;
         host?: string;
         type?: 'HTTP' | 'HTTPS';
-        limit?: number;
         page?: number;
         pageSize?: number;
       } = {};
@@ -50,10 +48,6 @@ export class StatsHandler {
 
       if (query.type && (query.type === 'HTTP' || query.type === 'HTTPS')) {
         options.type = query.type;
-      }
-
-      if (query.limit) {
-        options.limit = Number(query.limit);
       }
 
       if (query.page) {
@@ -90,7 +84,6 @@ export class StatsHandler {
    * Retrieves the current number of active proxy connections with pagination
    *
    * Query parameters:
-   * - limit: Limit number of records
    * - page: Page number for pagination
    * - pageSize: Records per page
    *
@@ -102,14 +95,9 @@ export class StatsHandler {
       const query = c.req.query();
 
       const options: {
-        limit?: number;
         page?: number;
         pageSize?: number;
       } = {};
-
-      if (query.limit) {
-        options.limit = Number(query.limit);
-      }
 
       if (query.page) {
         options.page = Math.max(1, Number(query.page));

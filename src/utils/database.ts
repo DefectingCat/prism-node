@@ -187,7 +187,6 @@ class Database {
       endTime?: number;
       host?: string;
       type?: 'HTTP' | 'HTTPS';
-      limit?: number;
       page?: number;
       pageSize?: number;
     } = {},
@@ -263,7 +262,7 @@ class Database {
 
       // 处理分页参数
       const page = options.page || 1;
-      const pageSize = options.pageSize || options.limit || 10;
+      const pageSize = options.pageSize || 10;
       const offset = (page - 1) * pageSize;
 
       // 获取总记录数（用于分页计算）

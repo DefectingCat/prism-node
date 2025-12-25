@@ -43,7 +43,7 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const Home = () => {
-  const { getStats, getActiveConnections } = useStatsApi();
+  const { getStats } = useStatsApi();
   const { t } = useTranslation();
 
   // 查询参数状态
@@ -57,21 +57,18 @@ const Home = () => {
   const [refreshIntervalTime, setRefreshIntervalTime] = useState(1000); // 默认1秒
 
   // 使用 SWR 的 refreshInterval 实现自动请求
-  const { data: statsData, error: statsError } = useSWR(
+  const { data: statsData, error } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
     { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
   );
 
   // 使用 SWR 自动获取活跃连接数
-  const { data: activeConnections, error: connectionsError } = useSWR(
-    'activeConnections',
-    getActiveConnections,
-    { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
-  );
-
-  // 统一错误信息
-  const error = statsError || connectionsError;
+  // const { data: activeConnections, error: connectionsError } = useSWR(
+  //   'activeConnections',
+  //   getActiveConnections,
+  //   { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
+  // );
 
   // 参数变化处理函数
   const handleParamChange = (
@@ -253,18 +250,18 @@ const Home = () => {
                   }
                   sx={{ flex: 1 }}
                   helperText={t('stats.refreshIntervalHelper')}
-                  inputProps={{ min: 1 }} // At least 1 second
+                  // inputProps={{ min: 1 }} // At least 1 second
                 />
               </Stack>
             </Paper>
 
-            {activeConnections !== null && (
+            {statsData?.activeConnections !== null && (
               <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
                 <Typography variant="subtitle2" color="text.secondary">
                   {t('stats.activeConnections')}
                 </Typography>
                 <Typography variant="h4" color="primary" sx={{ my: 1 }}>
-                  {activeConnections}
+                  {statsData?.activeConnections?.total}
                 </Typography>
               </Paper>
             )}
@@ -318,7 +315,7 @@ const Home = () => {
                       {t('stats.activeConnections')}
                     </Typography>
                     <Typography variant="h5">
-                      {statsData.activeConnections}
+                      {statsData.activeConnections.total}
                     </Typography>
                   </Box>
 

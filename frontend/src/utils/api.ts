@@ -99,7 +99,7 @@ export const useStatsApi = () => {
    * 获取当前活跃连接数
    * @returns 活跃连接数据
    */
-  const getActiveConnections = async (): Promise<number> => {
+  const getActiveConnections = async () => {
     const response =
       await axiosInstance.get<ApiResponse<ActiveConnectionsData>>(
         '/stats/active',
