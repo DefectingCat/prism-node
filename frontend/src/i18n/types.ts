@@ -34,6 +34,7 @@ export interface TranslationResources {
       success: string;
       error: string;
       timeout: string;
+      name: string;
     };
     loading: string;
     errorFetching: string;
@@ -55,6 +56,12 @@ export interface TranslationResources {
     autoRefresh: string;
     refreshInterval: string;
     refreshIntervalHelper: string;
+    timestamp: string;
+    targetHost: string;
+    targetPort: string;
+    clientIP: string;
+    bytesUp: string;
+    bytesDown: string;
   };
   logs: {
     title: string;

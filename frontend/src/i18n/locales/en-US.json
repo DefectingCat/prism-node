@@ -25,7 +25,7 @@
     "host": "Host",
     "visits": "visits",
     "duration": "Duration",
-    "status": { "success": "Success", "error": "Error", "timeout": "Timeout" },
+    "status": { "success": "Success", "error": "Error", "timeout": "Timeout", "name": "Status" },
     "loading": "Loading...",
     "errorFetching": "Failed to fetch data",
     "topHostsVisitCount": "Top Hosts Visit Count",
@@ -45,7 +45,13 @@
     "pageSize": "Page Size",
     "autoRefresh": "Auto Refresh",
     "refreshInterval": "Refresh Interval (ms)",
-    "refreshIntervalHelper": "Set the time interval for automatic data refresh, minimum 100 ms"
+    "refreshIntervalHelper": "Set the time interval for automatic data refresh, minimum 100 ms",
+    "timestamp": "Timestamp",
+    "targetHost": "Target Host",
+    "targetPort": "Target Port",
+    "clientIP": "Client IP",
+    "bytesUp": "Bytes Uploaded",
+    "bytesDown": "Bytes Downloaded"
   },
   "logs": {
     "title": "Real-time Logs",
