@@ -23,12 +23,36 @@ import { BarChart, PieChart } from '@mui/x-charts';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
+import { keyframes } from '@emotion/react';
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import type { StatsQueryParams } from '../types/stats';
 import { useStatsApi } from '../utils/api';
+
+// Keyframe animations
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const scaleIn = keyframes`
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+`;
 
 // 通用文件大小格式化函数
 const formatFileSize = (bytes: number): string => {
@@ -175,7 +199,15 @@ const Home = () => {
             )}
 
             {/* 查询参数配置区域 */}
-            <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+            <Paper
+              elevation={2}
+              sx={{
+                p: 2,
+                mb: 2,
+                animation: `${fadeIn} 0.3s ease-out`,
+                transition: 'all 0.3s ease-in-out',
+              }}
+            >
               <Typography variant="subtitle1" gutterBottom sx={{ mb: 2 }}>
                 {t('stats.queryParams')}
               </Typography>
@@ -277,7 +309,17 @@ const Home = () => {
                 sx={{ alignItems: 'center' }}
               >
                 {/* Auto Refresh Switch */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    transition: 'transform 0.2s ease-in-out',
+                    '&:hover': {
+                      transform: 'scale(1.02)',
+                    },
+                  }}
+                >
                   <FormControlLabel
                     control={
                       <Switch
@@ -318,7 +360,14 @@ const Home = () => {
 
             {/* 活跃连接数 */}
             {showSkeleton ? (
-              <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 2,
+                  mb: 2,
+                  animation: `${scaleIn} 0.4s ease-out`,
+                }}
+              >
                 <Skeleton variant="text" width="40%" height={20} />
                 <Skeleton
                   variant="text"
@@ -329,7 +378,19 @@ const Home = () => {
               </Paper>
             ) : (
               statsData?.activeConnections !== null && (
-                <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                <Paper
+                  elevation={2}
+                  sx={{
+                    p: 2,
+                    mb: 2,
+                    animation: `${fadeIn} 0.5s ease-out`,
+                    transition: 'all 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
                   <Typography variant="subtitle2" color="text.secondary">
                     {t('stats.activeConnections')}
                   </Typography>
@@ -342,7 +403,13 @@ const Home = () => {
 
             {/* 统计数据区域 */}
             {showSkeleton ? (
-              <Paper elevation={2} sx={{ p: 2 }}>
+              <Paper
+                elevation={2}
+                sx={{
+                  p: 2,
+                  animation: `${scaleIn} 0.4s ease-out`,
+                }}
+              >
                 <Skeleton
                   variant="text"
                   width="25%"
@@ -421,14 +488,28 @@ const Home = () => {
               </Paper>
             ) : (
               statsData && (
-                <Paper elevation={2} sx={{ p: 2 }}>
+                <Paper
+                  elevation={2}
+                  sx={{
+                    p: 2,
+                    animation: `${fadeIn} 0.5s ease-out`,
+                    transition: 'all 0.3s ease-in-out',
+                  }}
+                >
                   <Typography variant="h6" gutterBottom>
                     {t('stats.statsData')}
                   </Typography>
                   <Divider sx={{ mb: 2 }} />
 
                   <Stack spacing={2}>
-                    <Box>
+                    <Box
+                      sx={{
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        },
+                      }}
+                    >
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('stats.totalRequests')}
                       </Typography>
@@ -437,7 +518,14 @@ const Home = () => {
                       </Typography>
                     </Box>
 
-                    <Box>
+                    <Box
+                      sx={{
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        },
+                      }}
+                    >
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('stats.totalBytesUp')}
                       </Typography>
@@ -446,7 +534,14 @@ const Home = () => {
                       </Typography>
                     </Box>
 
-                    <Box>
+                    <Box
+                      sx={{
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        },
+                      }}
+                    >
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('stats.totalBytesDown')}
                       </Typography>
@@ -455,7 +550,14 @@ const Home = () => {
                       </Typography>
                     </Box>
 
-                    <Box>
+                    <Box
+                      sx={{
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        },
+                      }}
+                    >
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('stats.avgDuration')}
                       </Typography>
@@ -464,7 +566,14 @@ const Home = () => {
                       </Typography>
                     </Box>
 
-                    <Box>
+                    <Box
+                      sx={{
+                        transition: 'all 0.3s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateX(4px)',
+                        },
+                      }}
+                    >
                       <Typography variant="subtitle2" color="text.secondary">
                         {t('stats.activeConnections')}
                       </Typography>
@@ -487,7 +596,18 @@ const Home = () => {
                       </Typography>
                       <Stack spacing={1}>
                         {statsData.topHosts.map((host, index) => (
-                          <Paper key={index} sx={{ p: 1.5 }}>
+                          <Paper
+                            key={index}
+                            sx={{
+                              p: 1.5,
+                              animation: `${fadeIn} ${0.3 + index * 0.1}s ease-out`,
+                              transition: 'all 0.2s ease-in-out',
+                              '&:hover': {
+                                transform: 'translateX(8px)',
+                                boxShadow: 4,
+                              },
+                            }}
+                          >
                             <Typography variant="body2">
                               {host.host} - {host.count} {t('stats.visits')} (
                               {formatFileSize(host.bytes)})
@@ -508,8 +628,19 @@ const Home = () => {
                         {t('stats.recentRecords')} ({statsData.records.length})
                       </Typography>
                       <Stack spacing={1}>
-                        {statsData.records.slice(0, 5).map((record) => (
-                          <Paper key={record.requestId} sx={{ p: 1.5 }}>
+                        {statsData.records.slice(0, 5).map((record, index) => (
+                          <Paper
+                            key={record.requestId}
+                            sx={{
+                              p: 1.5,
+                              animation: `${fadeIn} ${0.3 + index * 0.1}s ease-out`,
+                              transition: 'all 0.2s ease-in-out',
+                              '&:hover': {
+                                transform: 'translateX(8px)',
+                                boxShadow: 4,
+                              },
+                            }}
+                          >
                             <Typography variant="body2">
                               <Chip
                                 label={record.type}
@@ -544,7 +675,14 @@ const Home = () => {
                     <Divider />
 
                     {/* Top Hosts Bar Chart */}
-                    <Box sx={{ height: 300, mt: 2 }}>
+                    <Box
+                      sx={{
+                        height: 300,
+                        mt: 2,
+                        animation: `${fadeIn} 0.6s ease-out`,
+                        transition: 'all 0.3s ease-in-out',
+                      }}
+                    >
                       <Typography
                         variant="subtitle2"
                         color="text.secondary"
@@ -570,7 +708,14 @@ const Home = () => {
                     </Box>
 
                     {/* Traffic Comparison Pie Chart */}
-                    <Box sx={{ height: 300, mt: 2 }}>
+                    <Box
+                      sx={{
+                        height: 300,
+                        mt: 2,
+                        animation: `${fadeIn} 0.7s ease-out`,
+                        transition: 'all 0.3s ease-in-out',
+                      }}
+                    >
                       <Typography
                         variant="subtitle2"
                         color="text.secondary"
@@ -604,7 +749,14 @@ const Home = () => {
                     </Box>
 
                     {/* Response Time Line Chart */}
-                    <Box sx={{ height: 300, mt: 2 }}>
+                    <Box
+                      sx={{
+                        height: 300,
+                        mt: 2,
+                        animation: `${fadeIn} 0.8s ease-out`,
+                        transition: 'all 0.3s ease-in-out',
+                      }}
+                    >
                       <Typography
                         variant="subtitle2"
                         color="text.secondary"
