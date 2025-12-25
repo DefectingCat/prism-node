@@ -1,6 +1,8 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import viteCompression from 'vite-plugin-compression';
+import viteImagemin from 'vite-plugin-imagemin';
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,6 +12,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react({
         // 启用 React 开发工具的性能优化
+        jsxRuntime: 'automatic',
         babel: isProduction
           ? {
               plugins: [
@@ -20,6 +23,35 @@ export default defineConfig(({ mode }) => {
           : {},
       }),
       tailwindcss(),
+
+      // Gzip 压缩
+      viteCompression({
+        verbose: true,
+        disable: false,
+        threshold: 10240, // 10KB 以上才压缩
+        algorithm: 'gzip',
+        ext: '.gz',
+      }),
+
+      // 图片压缩
+      viteImagemin({
+        gifsicle: { optimizationLevel: 7 },
+        optipng: { optimizationLevel: 7 },
+        mozjpeg: { quality: 80 },
+        pngquant: { quality: [0.8, 0.9], speed: 4 },
+        svgo: {
+          plugins: [
+            { name: 'removeViewBox', active: false },
+            { name: 'removeEmptyAttrs', active: false },
+          ],
+        },
+      }),
+
+      // SVG 雪碧图
+      // createSvgIconsPlugin({
+      //   iconDirs: [path.resolve(process.cwd(), 'src/assets/icons')],
+      //   symbolId: 'icon-[dir]-[name]',
+      // }),
     ],
 
     // 构建优化配置
@@ -36,37 +68,15 @@ export default defineConfig(({ mode }) => {
       // Rollup 打包配置
       rollupOptions: {
         output: {
-          // 手动配置代码分割策略
-          manualChunks: {
-            // React 核心库
-            'react-vendor': [
-              'react',
-              'react-dom',
-              'react-router-dom',
-              'react-router',
-            ],
-
-            // Material-UI 核心
-            'mui-core': ['@mui/material', '@emotion/react', '@emotion/styled'],
-
-            // Material-UI Charts（大型库，单独分割）
-            'mui-charts': ['@mui/x-charts'],
-
-            // Material-UI Date Pickers
-            'mui-pickers': [
-              '@mui/x-date-pickers',
-              '@mui/x-date-pickers-pro',
-              'dayjs',
-            ],
-
-            // 国际化相关
-            i18n: ['i18next', 'react-i18next'],
-
-            // 数据请求与状态管理
-            'data-fetching': ['axios', 'swr'],
-
-            // 工具库
-            utils: ['es-toolkit'],
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // 匹配 @scope/package 格式
+              const match = id.match(/node_modules\/(@[\w-]+\/[\w-]+|[\w-]+)/);
+              if (match) {
+                const packageName = match[1].replace('@', '').replace('/', '-');
+                return `rua.${packageName}`;
+              }
+            }
           },
 
           // 优化输出文件命名
@@ -180,30 +190,6 @@ export default defineConfig(({ mode }) => {
 
     // 预构建优化
     optimizeDeps: {
-      // 预构建包含的依赖
-      include: [
-        'react',
-        'react-dom',
-        'react-router-dom',
-        'react-router',
-        '@mui/material',
-        '@mui/material/styles',
-        '@mui/material/Box',
-        '@mui/material/IconButton',
-        '@mui/material/Typography',
-        '@emotion/react',
-        '@emotion/styled',
-        'axios',
-        'i18next',
-        'react-i18next',
-        'swr',
-        'dayjs',
-        'es-toolkit',
-      ],
-
-      // 排除不需要预构建的依赖（按需加载）
-      exclude: ['@mui/x-date-pickers-pro'],
-
       // 优化 esbuild 配置
       esbuildOptions: {
         target: 'es2020',
