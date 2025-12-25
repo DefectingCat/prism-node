@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Card,
   CardContent,
   Chip,
@@ -57,6 +58,8 @@ const Stats = () => {
     pageSize: 10,
   });
 
+  const [jumpToPage, setJumpToPage] = useState<string>('');
+
   const {
     data: statsData,
     error,
@@ -109,6 +112,25 @@ const Stats = () => {
       pageSize: parseInt(event.target.value, 10),
       page: 1,
     }));
+  };
+
+  const handleJumpToPage = () => {
+    const pageNumber = parseInt(jumpToPage, 10);
+    if (
+      !isNaN(pageNumber) &&
+      pageNumber >= 1 &&
+      statsData &&
+      pageNumber <= Math.ceil(statsData.pagination.total / statsData.pagination.pageSize)
+    ) {
+      setQueryParams((prev) => ({ ...prev, page: pageNumber }));
+      setJumpToPage('');
+    }
+  };
+
+  const handleJumpToPageKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleJumpToPage();
+    }
   };
 
   return (
@@ -315,15 +337,40 @@ const Stats = () => {
                       </TableBody>
                     </Table>
                   </TableContainer>
-                  <TablePagination
-                    component="div"
-                    count={statsData.pagination.total}
-                    page={(statsData.pagination.page || 1) - 1}
-                    onPageChange={handleChangePage}
-                    rowsPerPage={statsData.pagination.pageSize}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    rowsPerPageOptions={[10, 20, 50, 100]}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                    <TablePagination
+                      component="div"
+                      count={statsData.pagination.total}
+                      page={(statsData.pagination.page || 1) - 1}
+                      onPageChange={handleChangePage}
+                      rowsPerPage={statsData.pagination.pageSize}
+                      onRowsPerPageChange={handleChangeRowsPerPage}
+                      rowsPerPageOptions={[10, 20, 50, 100]}
+                      sx={{ flex: 1 }}
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 2 }}>
+                      <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                        {t('stats.jumpToPage', '跳转到')}
+                      </Typography>
+                      <TextField
+                        size="small"
+                        value={jumpToPage}
+                        onChange={(e) => setJumpToPage(e.target.value)}
+                        onKeyPress={handleJumpToPageKeyPress}
+                        onBlur={handleJumpToPage}
+                        placeholder={t('stats.pageNumber', '页码')}
+                        sx={{ width: '80px' }}
+                        inputProps={{
+                          min: 1,
+                          max: Math.ceil(statsData.pagination.total / statsData.pagination.pageSize),
+                          style: { textAlign: 'center' }
+                        }}
+                      />
+                      <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
+                        / {Math.ceil(statsData.pagination.total / statsData.pagination.pageSize)}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </>
               )
             )}
