@@ -83,5 +83,10 @@
     "developer": "开发者",
     "github": "GitHub 仓库",
     "license": "许可证"
+  },
+  "logs": {
+    "title": "实时日志",
+    "connecting": "正在连接到日志流...",
+    "connectionError": "无法连接到日志流"
   }
 }

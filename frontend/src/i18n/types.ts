@@ -56,6 +56,11 @@ export interface TranslationResources {
     refreshInterval: string;
     refreshIntervalHelper: string;
   };
+  logs: {
+    title: string;
+    connecting: string;
+    connectionError: string;
+  };
 }
 
 declare module 'i18next' {

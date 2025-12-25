@@ -148,37 +148,6 @@ export default defineConfig(({ mode }) => {
         ],
       },
 
-      // 代理配置
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3000',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-          timeout: 30000, // 30秒超时
-
-          // 配置代理请求头
-          configure: (proxy) => {
-            // 仅在开发模式下输出详细日志
-            if (process.env.VITE_DEBUG) {
-              proxy.on('error', (err) => {
-                console.log('代理错误', err);
-              });
-              proxy.on('proxyReq', (_proxyReq, req) => {
-                console.log('发送请求:', req.method, req.url);
-              });
-              proxy.on('proxyRes', (proxyRes, req) => {
-                console.log('收到响应:', proxyRes.statusCode, req.url);
-              });
-            } else {
-              // 静默模式，仅输出错误
-              proxy.on('error', (err) => {
-                console.error('代理错误:', err.message);
-              });
-            }
-          },
-        },
-      },
-
       // CORS 配置
       cors: true,
 
