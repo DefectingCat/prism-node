@@ -129,22 +129,32 @@ async function main() {
     console.log('Copying frontend files to dist/html/...');
     copyDirectory('frontend/dist', 'dist/html');
 
-    // 步骤 4: 复制 README.md 到 dist 目录
-    console.log('Copying README.md to dist/...');
-    const readmePath = 'README.md';
-    const targetReadmePath = join('dist', 'README.md');
+    // 步骤 4: 复制 README 文件到 dist 目录（支持多语言版本）
+    console.log('Copying README files to dist/...');
 
     // 确保 dist 目录存在
     if (!existsSync('dist')) {
       mkdirSync('dist', { recursive: true });
     }
 
-    // 检查 README.md 是否存在
+    // 复制英文版 README.md
+    const readmePath = 'README.md';
+    const targetReadmePath = join('dist', 'README.md');
     if (existsSync(readmePath)) {
       copyFileSync(readmePath, targetReadmePath);
       console.log('README.md copied successfully!');
     } else {
       console.warn('README.md not found in project root, skipping...');
+    }
+
+    // 复制中文版 README-zh.md
+    const readmeZhPath = 'README-zh.md';
+    const targetReadmeZhPath = join('dist', 'README-zh.md');
+    if (existsSync(readmeZhPath)) {
+      copyFileSync(readmeZhPath, targetReadmeZhPath);
+      console.log('README-zh.md copied successfully!');
+    } else {
+      console.warn('README-zh.md not found in project root, skipping...');
     }
 
     // 构建完成提示

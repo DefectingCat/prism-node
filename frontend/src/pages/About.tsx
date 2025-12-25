@@ -1,12 +1,14 @@
 import { Alert, Box, CircularProgress, Container, Paper } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useApiFetch } from '../utils/api';
 
 /**
  * About 页面组件
- * 从后端 API 获取 README.md 内容并渲染为 HTML
+ * 从后端 API 获取 README 内容并渲染为 HTML
+ * 支持根据当前语言设置自动显示对应语言版本的 README
  */
 const About = () => {
   // 状态管理
@@ -14,11 +16,15 @@ const About = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 获取 i18n 实例以获取当前语言
+  const { i18n } = useTranslation();
+
   // 获取 API fetch 函数
   const apiFetch = useApiFetch();
 
   /**
-   * 从后端 API 获取 README.md 内容
+   * 从后端 API 获取 README 内容
+   * 根据当前语言设置自动请求对应语言版本的 README
    */
   useEffect(() => {
     const fetchAboutContent = async () => {
@@ -26,8 +32,13 @@ const About = () => {
         setLoading(true);
         setError(null);
 
-        // 调用 /api/about 接口
-        const response = await apiFetch('/about');
+        // 根据当前 i18n 语言设置构建语言参数
+        // zh-CN -> lang=zh-CN, en-US -> lang=en-US
+        const currentLanguage = i18n.language || 'en-US';
+        const langParam = currentLanguage.startsWith('zh') ? 'zh-CN' : 'en-US';
+
+        // 调用 /api/about 接口，传递语言参数
+        const response = await apiFetch(`/about?lang=${langParam}`);
 
         if (response.success && response.data?.content) {
           setContent(response.data.content);
@@ -47,8 +58,9 @@ const About = () => {
     };
 
     fetchAboutContent();
+    // 当语言改变时重新获取对应语言的 README
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [i18n.language]);
 
   // 加载状态
   if (loading) {
