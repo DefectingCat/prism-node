@@ -12,7 +12,9 @@ import logger from './utils/logger';
 async function startWorker(): Promise<void> {
   try {
     const configPath = path.join(process.cwd(), 'config.json');
-    logger.info(`Worker ${process.pid} loading configuration from ${configPath}...`);
+    logger.info(
+      `Worker ${process.pid} loading configuration from ${configPath}...`,
+    );
     const config = await loadConfig(configPath);
     logger.info(`Worker ${process.pid} configuration loaded successfully`);
 
@@ -54,7 +56,9 @@ function startMaster(): void {
         `Worker ${worker.process.pid} was killed by signal: ${signal}`,
       );
     } else if (code !== 0) {
-      logger.error(`Worker ${worker.process.pid} exited with error code: ${code}`);
+      logger.error(
+        `Worker ${worker.process.pid} exited with error code: ${code}`,
+      );
     } else {
       logger.info(`Worker ${worker.process.pid} exited normally`);
     }
@@ -69,7 +73,9 @@ function startMaster(): void {
 
   // 优雅关闭：接收到退出信号时，关闭所有工作进程
   const gracefulShutdown = (signal: string) => {
-    logger.info(`Master ${process.pid} received ${signal}, shutting down workers...`);
+    logger.info(
+      `Master ${process.pid} received ${signal}, shutting down workers...`,
+    );
 
     for (const id in cluster.workers) {
       const worker = cluster.workers[id];

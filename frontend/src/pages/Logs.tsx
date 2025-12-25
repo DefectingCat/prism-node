@@ -138,35 +138,47 @@ const Logs = () => {
   }, [baseUrl]);
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        {t('logs.title')}
-      </Typography>
+    <Box
+      sx={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
+      <Box sx={{ p: 3, pb: 2 }}>
+        <Typography variant="h4" gutterBottom>
+          {t('logs.title')}
+        </Typography>
 
-      {/* 连接状态指示器 */}
-      {connectionStatus === 'connecting' && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {t('logs.connecting')}
-        </Alert>
-      )}
-      {connectionStatus === 'error' && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {errorMessage || t('logs.connectionError')}
-        </Alert>
-      )}
+        {/* 连接状态指示器 */}
+        {connectionStatus === 'connecting' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {t('logs.connecting')}
+          </Alert>
+        )}
+        {connectionStatus === 'error' && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {errorMessage || t('logs.connectionError')}
+          </Alert>
+        )}
+      </Box>
 
       {/* 终端容器 */}
-      <Paper
-        elevation={3}
-        sx={{
-          p: 2,
-          backgroundColor: '#1e1e1e',
-          borderRadius: 1,
-          overflow: 'hidden',
-        }}
-      >
-        <div ref={terminalRef} />
-      </Paper>
+      <Box sx={{ flex: 1, px: 3, pb: 3, overflow: 'hidden' }}>
+        <Paper
+          elevation={3}
+          sx={{
+            p: 2,
+            backgroundColor: '#1e1e1e',
+            borderRadius: 1,
+            overflow: 'hidden',
+            height: '100%',
+          }}
+        >
+          <div ref={terminalRef} style={{ height: '100%' }} />
+        </Paper>
+      </Box>
     </Box>
   );
 };

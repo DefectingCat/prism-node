@@ -25,7 +25,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import dayjs, { Dayjs } from 'dayjs';
-import { useState } from 'react';
+import { debounce } from 'es-toolkit';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import type { StatsQueryParams } from '../types/stats';
@@ -77,6 +78,17 @@ const Home = () => {
     page: 1,
     pageSize: 10,
   });
+
+  const [hostValue, setHostValue] = useState<string>('');
+  const handleHostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setHostValue(event.target.value);
+    debouncedSetQueryParams({ host: event.target.value });
+  };
+  const debouncedSetQueryParams = useRef(
+    debounce((params: Partial<StatsQueryParams>) => {
+      setQueryParams((prev) => ({ ...prev, ...params }));
+    }, 500),
+  ).current;
 
   const [needShowSkeleton, setNeedShowSkeleton] = useState(false);
   const updateQueryParams = (
@@ -297,8 +309,8 @@ const Home = () => {
                 {/* Host */}
                 <TextField
                   label={t('stats.host')}
-                  value={queryParams.host || ''}
-                  onChange={(e) => handleParamChange('host', e.target.value)}
+                  value={hostValue}
+                  onChange={handleHostChange}
                   sx={{ flex: 1 }}
                 />
               </Stack>
