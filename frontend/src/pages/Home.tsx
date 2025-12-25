@@ -13,6 +13,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Skeleton,
   Stack,
   Switch,
   TextField,
@@ -62,10 +63,15 @@ const Home = () => {
     data: statsData,
     error,
     mutate,
+    isLoading,
+    isValidating,
   } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
-    { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
+    {
+      refreshInterval: autoRefresh ? refreshIntervalTime : 0, // 根据开关状态和设置的间隔时间刷新
+      keepPreviousData: true, // 保留之前的数据，自动刷新时不会清空
+    },
   );
 
   // 使用 SWR 自动获取活跃连接数
@@ -129,6 +135,13 @@ const Home = () => {
       mutate();
     }
   };
+
+  // 首次加载或手动修改参数时显示骨架屏（自动刷新时不显示）
+  const isInitialLoading = (isLoading || isValidating) && !statsData;
+  // 判断是否为自动刷新：有数据且正在验证中
+  const isAutoRefreshing = autoRefresh && statsData && isValidating;
+  // 最终是否显示骨架屏：首次加载或手动调节参数时显示，自动刷新时不显示
+  const showSkeleton = isInitialLoading && !isAutoRefreshing;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -291,25 +304,93 @@ const Home = () => {
               </Stack>
             </Paper>
 
-            {statsData?.activeConnections !== null && (
+            {/* 活跃连接数 */}
+            {showSkeleton ? (
               <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  {t('stats.activeConnections')}
-                </Typography>
-                <Typography variant="h4" color="primary" sx={{ my: 1 }}>
-                  {statsData?.activeConnections?.total}
-                </Typography>
+                <Skeleton variant="text" width="40%" height={20} />
+                <Skeleton variant="text" width="15%" height={48} sx={{ my: 1 }} />
               </Paper>
+            ) : (
+              statsData?.activeConnections !== null && (
+                <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {t('stats.activeConnections')}
+                  </Typography>
+                  <Typography variant="h4" color="primary" sx={{ my: 1 }}>
+                    {statsData?.activeConnections?.total}
+                  </Typography>
+                </Paper>
+              )
             )}
 
-            {statsData && (
+            {/* 统计数据区域 */}
+            {showSkeleton ? (
               <Paper elevation={2} sx={{ p: 2 }}>
-                <Typography variant="h6" gutterBottom>
-                  {t('stats.statsData')}
-                </Typography>
+                <Skeleton variant="text" width="25%" height={32} sx={{ mb: 1 }} />
                 <Divider sx={{ mb: 2 }} />
 
                 <Stack spacing={2}>
+                  {/* 统计指标 */}
+                  {[1, 2, 3, 4, 5].map((item) => (
+                    <Box key={item}>
+                      <Skeleton variant="text" width="30%" height={20} />
+                      <Skeleton variant="text" width="20%" height={40} />
+                    </Box>
+                  ))}
+
+                  <Divider />
+
+                  {/* Top Hosts 列表 */}
+                  <Box>
+                    <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                    <Stack spacing={1}>
+                      {[1, 2, 3].map((item) => (
+                        <Paper key={item} sx={{ p: 1.5 }}>
+                          <Skeleton variant="text" width="80%" />
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* 最近记录 */}
+                  <Box>
+                    <Skeleton variant="text" width="35%" height={20} sx={{ mb: 1 }} />
+                    <Stack spacing={1}>
+                      {[1, 2, 3, 4, 5].map((item) => (
+                        <Paper key={item} sx={{ p: 1.5 }}>
+                          <Skeleton variant="text" width="90%" />
+                        </Paper>
+                      ))}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* 图表骨架屏 */}
+                  {[1, 2, 3].map((item) => (
+                    <Box key={item} sx={{ height: 300, mt: 2 }}>
+                      <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                      <Skeleton
+                        variant="rounded"
+                        width="100%"
+                        height={280}
+                        animation="wave"
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              </Paper>
+            ) : (
+              statsData && (
+                <Paper elevation={2} sx={{ p: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    {t('stats.statsData')}
+                  </Typography>
+                  <Divider sx={{ mb: 2 }} />
+
+                  <Stack spacing={2}>
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">
                       {t('stats.totalRequests')}
@@ -516,6 +597,7 @@ const Home = () => {
                   </Box>
                 </Stack>
               </Paper>
+              )
             )}
           </CardContent>
         </Card>
