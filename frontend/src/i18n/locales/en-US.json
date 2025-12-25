@@ -25,7 +25,12 @@
     "host": "Host",
     "visits": "visits",
     "duration": "Duration",
-    "status": { "success": "Success", "error": "Error", "timeout": "Timeout", "name": "Status" },
+    "status": {
+      "success": "Success",
+      "error": "Error",
+      "timeout": "Timeout",
+      "name": "Status"
+    },
     "loading": "Loading...",
     "errorFetching": "Failed to fetch data",
     "topHostsVisitCount": "Top Hosts Visit Count",

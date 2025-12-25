@@ -1,6 +1,5 @@
 import {
   Alert,
-  Box,
   Card,
   CardContent,
   Chip,
@@ -29,7 +28,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
-import type { StatsQueryParams, AccessRecord } from '../types/stats';
+import type { AccessRecord, StatsQueryParams } from '../types/stats';
 import { useStatsApi } from '../utils/api';
 
 const formatFileSize = (bytes: number): string => {
@@ -58,13 +57,13 @@ const Stats = () => {
     pageSize: 10,
   });
 
-  const { data: statsData, error, isLoading } = useSWR(
-    ['stats', queryParams],
-    () => getStats(queryParams),
-    {
-      keepPreviousData: true,
-    },
-  );
+  const {
+    data: statsData,
+    error,
+    isLoading,
+  } = useSWR(['stats', queryParams], () => getStats(queryParams), {
+    keepPreviousData: true,
+  });
 
   const handleParamChange = (
     field: keyof StatsQueryParams,
@@ -102,7 +101,9 @@ const Stats = () => {
     setQueryParams((prev) => ({ ...prev, page: newPage + 1 }));
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     setQueryParams((prev) => ({
       ...prev,
       pageSize: parseInt(event.target.value, 10),
@@ -136,7 +137,9 @@ const Stats = () => {
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                   <DateRangePicker
                     value={[
-                      queryParams.startTime ? dayjs(queryParams.startTime) : null,
+                      queryParams.startTime
+                        ? dayjs(queryParams.startTime)
+                        : null,
                       queryParams.endTime ? dayjs(queryParams.endTime) : null,
                     ]}
                     onChange={handleDateRangeChange}
@@ -165,7 +168,9 @@ const Stats = () => {
                     <Select
                       value={queryParams.type || ''}
                       label={t('stats.requestType')}
-                      onChange={(e) => handleParamChange('type', e.target.value)}
+                      onChange={(e) =>
+                        handleParamChange('type', e.target.value)
+                      }
                     >
                       <MenuItem value="">
                         <em>{t('stats.all')}</em>
@@ -179,9 +184,74 @@ const Stats = () => {
             </Paper>
 
             {isLoading ? (
-              <Box>
-                <Skeleton variant="rectangular" height={400} />
-              </Box>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width="80%" />
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
+                      <TableRow key={row}>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton variant="text" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             ) : (
               statsData && (
                 <>
@@ -210,15 +280,23 @@ const Stats = () => {
                               <Chip
                                 label={record.type}
                                 size="small"
-                                color={record.type === 'HTTPS' ? 'success' : 'default'}
+                                color={
+                                  record.type === 'HTTPS'
+                                    ? 'success'
+                                    : 'default'
+                                }
                               />
                             </TableCell>
                             <TableCell>{record.targetHost}</TableCell>
                             <TableCell>{record.targetPort}</TableCell>
                             <TableCell>{record.clientIP}</TableCell>
                             <TableCell>{record.duration} ms</TableCell>
-                            <TableCell>{formatFileSize(record.bytesUp)}</TableCell>
-                            <TableCell>{formatFileSize(record.bytesDown)}</TableCell>
+                            <TableCell>
+                              {formatFileSize(record.bytesUp)}
+                            </TableCell>
+                            <TableCell>
+                              {formatFileSize(record.bytesDown)}
+                            </TableCell>
                             <TableCell>
                               <Chip
                                 label={t(`stats.status.${record.status}`)}

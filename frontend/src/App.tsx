@@ -8,6 +8,7 @@ import HomeSkeleton from './components/HomeSkeleton';
 import LogsSkeleton from './components/LogsSkeleton';
 import Navbar from './components/Navbar';
 import SettingsSkeleton from './components/SettingsSkeleton';
+import StatsSkeleton from './components/StatsSkeleton';
 import { useThemeMode } from './hooks/useThemeMode';
 import { createMuiTheme } from './theme/muiTheme';
 
@@ -40,7 +41,7 @@ const AppContent = () => {
             <Route
               path="/stats"
               element={
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<StatsSkeleton />}>
                   <Stats />
                 </Suspense>
               }
