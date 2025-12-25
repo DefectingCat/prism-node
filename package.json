@@ -5,9 +5,9 @@
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "scripts": {
-    "build": "tsc",
+    "tsc": "tsc",
     "build:bin": "pnpm run build && pkg dist/main.js -o prism-node",
-    "build:all": "node scripts/build.mjs",
+    "build": "node scripts/build.mjs",
     "dev": "ts-node src/main.ts",
     "start": "node dist/main.js",
     "watch": "tsc --watch",

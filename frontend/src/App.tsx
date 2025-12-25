@@ -4,8 +4,6 @@ import { lazy, Suspense, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import './App.css';
 import Navbar from './components/Navbar';
-import { ApiConfigProvider } from './contexts/ApiConfigContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import { useThemeMode } from './hooks/useThemeMode';
 import { createMuiTheme } from './theme/muiTheme';
 
@@ -75,13 +73,7 @@ const AppContent = () => {
 };
 
 function App() {
-  return (
-    <ThemeProvider>
-      <ApiConfigProvider>
-        <AppContent />
-      </ApiConfigProvider>
-    </ThemeProvider>
-  );
+  return <AppContent />;
 }
 
 export default App;

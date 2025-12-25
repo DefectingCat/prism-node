@@ -1,4 +1,6 @@
 @import "tailwindcss";
 
+@plugin "@iconify/tailwind4";
+
 /* Tailwind CSS v4 深色模式配置 - 使用 class 策略 */
 @custom-variant dark (&:where(.dark, .dark *));

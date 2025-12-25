@@ -1,14 +1,12 @@
-import { useContext } from 'react';
-import { ApiConfigContext } from '../contexts/ApiConfigContext';
+import { useApiConfigStore } from '../stores/useApiConfigStore';
 
 /**
- * 自定义 Hook 用于访问 API 配置上下文
- * 必须在 ApiConfigProvider 内部使用
+ * 自定义 Hook 用于访问 API 配置状态
+ * 使用 zustand store 管理 API 配置
  */
 export const useApiConfig = () => {
-  const context = useContext(ApiConfigContext);
-  if (context === undefined) {
-    throw new Error('useApiConfig must be used within an ApiConfigProvider');
-  }
-  return context;
+  const baseUrl = useApiConfigStore((state) => state.baseUrl);
+  const setBaseUrl = useApiConfigStore((state) => state.setBaseUrl);
+
+  return { baseUrl, setBaseUrl };
 };

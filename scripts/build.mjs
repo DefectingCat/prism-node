@@ -12,7 +12,13 @@
  */
 
 import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  existsSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -119,7 +125,7 @@ async function main() {
   try {
     // 步骤 1: 构建服务端代码
     console.log('Building server...');
-    await runCommand('pnpm', ['run', 'build']);
+    await runCommand('pnpm', ['run', 'tsc']);
 
     // 步骤 2: 构建前端代码（在 frontend 目录下执行）
     console.log('Building frontend...');
