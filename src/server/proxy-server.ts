@@ -19,8 +19,8 @@ export async function startProxy(config: Config): Promise<void> {
   logger.info(`Listen address: ${config.addr}`);
   logger.info(`SOCKS5 address: ${config.socks_addr}`);
 
-  // 初始化统计收集器
-  await statsCollector.initialize();
+  // Initialize stats collector with config
+  await statsCollector.initialize(config);
 
   // Create HTTP server that handles standard HTTP requests
   const server = http.createServer((req, res) => {

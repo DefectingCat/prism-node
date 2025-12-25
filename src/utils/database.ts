@@ -1,28 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { promisify } from 'node:util';
-import sqlite3 from 'sqlite3';
+import { Pool, type QueryResult } from 'pg';
+import type { PostgresConfig } from '../config/types';
 import logger from './logger';
 
-interface SQLiteRunResult {
-  lastID: number;
-  changes: number;
-}
 
-type SQLiteParam = string | number | null | undefined;
-
-type PromisifiedRun = (
-  sql: string,
-  params?: SQLiteParam[],
-) => Promise<SQLiteRunResult>;
-type PromisifiedAll = (
-  sql: string,
-  params?: SQLiteParam[],
-) => Promise<Record<string, SQLiteParam>[]>;
-type PromisifiedGet = (
-  sql: string,
-  params?: SQLiteParam[],
-) => Promise<Record<string, SQLiteParam>>;
 
 /**
  * 代理访问记录接口
@@ -45,56 +25,58 @@ export interface AccessRecord {
 }
 
 /**
- * SQLite 数据库管理类
- * 负责代理访问统计数据的存储和查询
+ * PostgreSQL database management class
+ * Responsible for storing and querying proxy access statistics
  */
 class Database {
-  private db: sqlite3.Database | null = null;
-  private dbPath: string;
+  private pool: Pool | null = null;
 
   constructor() {
-    // 确保 logs 目录存在
-    const logsDir = path.join(process.cwd(), 'logs');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-
-    this.dbPath = path.join(logsDir, 'proxy-stats.db');
+    // Constructor is now empty, initialization happens in initialize()
   }
 
   /**
-   * 初始化数据库连接和表结构
+   * Initialize database connection pool and table structure
+   * @param config PostgreSQL configuration
    */
-  async initialize(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
-        if (err) {
-          logger.error('Failed to open database:', err.message);
-          reject(err);
-          return;
-        }
-
-        logger.info(`SQLite database opened: ${this.dbPath}`);
-        this.createTables()
-          .then(() => resolve())
-          .catch(reject);
-      });
+  async initialize(config: PostgresConfig): Promise<void> {
+    // Create connection pool
+    this.pool = new Pool({
+      host: config.host,
+      port: config.port,
+      database: config.database,
+      user: config.user,
+      password: config.password,
+      max: config.pool?.max ?? 10,
+      idleTimeoutMillis: config.pool?.idleTimeoutMillis ?? 30000,
+      connectionTimeoutMillis: config.pool?.connectionTimeoutMillis ?? 2000,
     });
+
+    // Test connection
+    try {
+      const client = await this.pool.connect();
+      logger.info(`PostgreSQL database connected: ${config.host}:${config.port}/${config.database}`);
+      client.release();
+
+      // Create tables and indexes
+      await this.createTables();
+    } catch (error) {
+      logger.error('Failed to connect to database:', error);
+      throw error;
+    }
   }
 
   /**
-   * 创建数据库表和索引
+   * Create database tables and indexes
    */
   private async createTables(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.pool) throw new Error('Database not initialized');
 
-    const runAsync = promisify(this.db.run.bind(this.db)) as PromisifiedRun;
-
-    // 创建访问日志表
+    // Create access logs table
     const createTableSQL = `
       CREATE TABLE IF NOT EXISTS access_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER NOT NULL,
+        id SERIAL PRIMARY KEY,
+        timestamp BIGINT NOT NULL,
         request_id TEXT NOT NULL,
         type TEXT NOT NULL CHECK (type IN ('HTTP', 'HTTPS')),
         target_host TEXT NOT NULL,
@@ -102,25 +84,29 @@ class Database {
         client_ip TEXT NOT NULL,
         user_agent TEXT,
         duration INTEGER NOT NULL,
-        bytes_up INTEGER NOT NULL DEFAULT 0,
-        bytes_down INTEGER NOT NULL DEFAULT 0,
+        bytes_up BIGINT NOT NULL DEFAULT 0,
+        bytes_down BIGINT NOT NULL DEFAULT 0,
         status TEXT NOT NULL CHECK (status IN ('success', 'error', 'timeout')),
         error_message TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
-    // 创建查询优化索引
-    const createIndexSQL = `
-      CREATE INDEX IF NOT EXISTS idx_timestamp ON access_logs(timestamp);
-      CREATE INDEX IF NOT EXISTS idx_target_host ON access_logs(target_host);
-      CREATE INDEX IF NOT EXISTS idx_type ON access_logs(type);
-      CREATE INDEX IF NOT EXISTS idx_status ON access_logs(status);
-    `;
+    // Create query optimization indexes
+    const createIndexesSQL = [
+      'CREATE INDEX IF NOT EXISTS idx_timestamp ON access_logs(timestamp)',
+      'CREATE INDEX IF NOT EXISTS idx_target_host ON access_logs(target_host)',
+      'CREATE INDEX IF NOT EXISTS idx_type ON access_logs(type)',
+      'CREATE INDEX IF NOT EXISTS idx_status ON access_logs(status)',
+    ];
 
     try {
-      await runAsync(createTableSQL);
-      await runAsync(createIndexSQL);
+      await this.pool.query(createTableSQL);
+
+      for (const indexSQL of createIndexesSQL) {
+        await this.pool.query(indexSQL);
+      }
+
       logger.info('Database tables created successfully');
     } catch (error) {
       logger.error('Failed to create tables:', error);
@@ -129,57 +115,50 @@ class Database {
   }
 
   /**
-   * 插入访问记录到数据库
-   * @param record 访问记录对象
-   * @returns 插入记录的ID
+   * Insert access record into database
+   * @param record Access record object
+   * @returns ID of inserted record
    */
   async insertAccessRecord(record: AccessRecord): Promise<number> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.pool) throw new Error('Database not initialized');
 
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
+    const sql = `
+      INSERT INTO access_logs (
+        timestamp, request_id, type, target_host, target_port,
+        client_ip, user_agent, duration, bytes_up, bytes_down,
+        status, error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      RETURNING id
+    `;
 
-      const sql = `
-        INSERT INTO access_logs (
-          timestamp, request_id, type, target_host, target_port,
-          client_ip, user_agent, duration, bytes_up, bytes_down,
-          status, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+    const params = [
+      record.timestamp,
+      record.requestId,
+      record.type,
+      record.targetHost,
+      record.targetPort,
+      record.clientIP,
+      record.userAgent || null,
+      record.duration,
+      record.bytesUp,
+      record.bytesDown,
+      record.status,
+      record.errorMessage || null,
+    ];
 
-      const params = [
-        record.timestamp,
-        record.requestId,
-        record.type,
-        record.targetHost,
-        record.targetPort,
-        record.clientIP,
-        record.userAgent || null,
-        record.duration,
-        record.bytesUp,
-        record.bytesDown,
-        record.status,
-        record.errorMessage || null,
-      ];
-
-      this.db.run(sql, params, function (err) {
-        if (err) {
-          logger.error('Failed to insert access record:', err);
-          reject(err);
-          return;
-        }
-        resolve(this.lastID);
-      });
-    });
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rows[0].id;
+    } catch (error) {
+      logger.error('Failed to insert access record:', error);
+      throw error;
+    }
   }
 
   /**
-   * 获取统计数据
-   * @param options 查询选项
-   * @returns 统计结果包含总体数据、热门主机和详细记录
+   * Get statistics data
+   * @param options Query options
+   * @returns Statistics results including overall data, top hosts, and detailed records
    */
   async getStats(
     options: {
@@ -204,49 +183,48 @@ class Database {
       totalPages: number;
     };
   }> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.pool) throw new Error('Database not initialized');
 
-    const allAsync = promisify(this.db.all.bind(this.db)) as PromisifiedAll;
-    const getAsync = promisify(this.db.get.bind(this.db)) as PromisifiedGet;
-
-    // 构建查询条件
+    // Build query conditions
     let whereClause = 'WHERE 1=1';
-    const params: SQLiteParam[] = [];
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (options.startTime) {
-      whereClause += ' AND timestamp >= ?';
+      whereClause += ` AND timestamp >= $${paramIndex++}`;
       params.push(options.startTime);
     }
 
     if (options.endTime) {
-      whereClause += ' AND timestamp <= ?';
+      whereClause += ` AND timestamp <= $${paramIndex++}`;
       params.push(options.endTime);
     }
 
     if (options.host) {
-      whereClause += ' AND target_host LIKE ?';
+      whereClause += ` AND target_host LIKE $${paramIndex++}`;
       params.push(`%${options.host}%`);
     }
 
     if (options.type) {
-      whereClause += ' AND type = ?';
+      whereClause += ` AND type = $${paramIndex++}`;
       params.push(options.type);
     }
 
     try {
-      // 获取总体统计
+      // Get overall statistics
       const statsSQL = `
         SELECT
-          COUNT(*) as totalRequests,
-          SUM(bytes_up) as totalBytesUp,
-          SUM(bytes_down) as totalBytesDown,
-          AVG(duration) as avgDuration
+          COUNT(*) as total_requests,
+          COALESCE(SUM(bytes_up), 0) as total_bytes_up,
+          COALESCE(SUM(bytes_down), 0) as total_bytes_down,
+          COALESCE(AVG(duration), 0) as avg_duration
         FROM access_logs ${whereClause}
       `;
 
-      const stats = await getAsync(statsSQL, params);
+      const statsResult: QueryResult = await this.pool.query(statsSQL, params);
+      const stats = statsResult.rows[0];
 
-      // 获取热门主机
+      // Get top hosts
       const topHostsSQL = `
         SELECT
           target_host as host,
@@ -258,27 +236,27 @@ class Database {
         LIMIT 10
       `;
 
-      const topHosts = await allAsync(topHostsSQL, params);
+      const topHostsResult: QueryResult = await this.pool.query(topHostsSQL, params);
 
-      // 处理分页参数
+      // Handle pagination parameters
       const page = options.page || 1;
       const pageSize = options.pageSize || 10;
       const offset = (page - 1) * pageSize;
 
-      // 获取总记录数（用于分页计算）
+      // Get total record count (for pagination calculation)
       const countSQL = `SELECT COUNT(*) as total FROM access_logs ${whereClause}`;
-      const countResult = await getAsync(countSQL, params);
-      const total = Number(countResult.total) || 0;
+      const countResult: QueryResult = await this.pool.query(countSQL, params);
+      const total = Number(countResult.rows[0].total) || 0;
 
-      // 获取详细记录（带分页）
+      // Get detailed records (with pagination)
       const recordsSQL = `
         SELECT * FROM access_logs ${whereClause}
         ORDER BY timestamp DESC
-        LIMIT ? OFFSET ?
+        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
       `;
 
       const recordParams = [...params, pageSize, offset];
-      const records = await allAsync(recordsSQL, recordParams);
+      const recordsResult: QueryResult = await this.pool.query(recordsSQL, recordParams);
 
       const result: {
         totalRequests: number;
@@ -294,17 +272,31 @@ class Database {
           totalPages: number;
         };
       } = {
-        totalRequests: Number(stats.totalRequests) || 0,
-        totalBytesUp: Number(stats.totalBytesUp) || 0,
-        totalBytesDown: Number(stats.totalBytesDown) || 0,
-        avgDuration: Number(stats.avgDuration) || 0,
-        topHosts: (topHosts || []).map((host) => ({
+        totalRequests: Number(stats.total_requests) || 0,
+        totalBytesUp: Number(stats.total_bytes_up) || 0,
+        totalBytesDown: Number(stats.total_bytes_down) || 0,
+        avgDuration: Number(stats.avg_duration) || 0,
+        topHosts: topHostsResult.rows.map((host: { host: string; count: number; bytes: number }) => ({
           host: String(host.host),
           count: Number(host.count),
           bytes: Number(host.bytes),
         })),
-        records: records.map(
-          (record): AccessRecord => ({
+        records: recordsResult.rows.map(
+          (record: {
+            id?: number;
+            timestamp: number;
+            request_id: string;
+            type: string;
+            target_host: string;
+            target_port: number;
+            client_ip: string;
+            user_agent?: string;
+            duration: number;
+            bytes_up: number;
+            bytes_down: number;
+            status: string;
+            error_message?: string;
+          }): AccessRecord => ({
             id: record.id ? Number(record.id) : undefined,
             timestamp: Number(record.timestamp),
             requestId: String(record.request_id),
@@ -340,30 +332,19 @@ class Database {
   }
 
   /**
-   * 关闭数据库连接
+   * Close database connection
    */
   async close(): Promise<void> {
-    if (!this.db) return;
+    if (!this.pool) return;
 
-    return new Promise((resolve, reject) => {
-      const dbToClose = this.db;
-      if (!dbToClose) {
-        resolve();
-        return;
-      }
-
-      this.db = null; // Set to null immediately to prevent double closing
-
-      dbToClose.close((err) => {
-        if (err) {
-          logger.error('Failed to close database:', err);
-          reject(err);
-          return;
-        }
-        logger.info('Database connection closed');
-        resolve();
-      });
-    });
+    try {
+      await this.pool.end();
+      this.pool = null;
+      logger.info('Database connection pool closed');
+    } catch (error) {
+      logger.error('Failed to close database:', error);
+      throw error;
+    }
   }
 }
 

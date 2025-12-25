@@ -9,5 +9,19 @@
   "http_addr": "127.0.0.1:3000",
 
   // 静态资源目录路径（可选，默认为 "./html"）
-  "static_dir": "./dist/html"
+  "static_dir": "./dist/html",
+
+  // PostgreSQL 数据库配置
+  "postgres": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "prism_node",
+    "user": "postgres",
+    "password": "your_password",
+    "pool": {
+      "max": 10,
+      "idleTimeoutMillis": 30000,
+      "connectionTimeoutMillis": 2000
+    }
+  }
 }

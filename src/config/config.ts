@@ -18,6 +18,17 @@ export async function loadConfig(configPath: string): Promise<Config> {
       throw new Error("Config must contain 'addr' and 'socks_addr' properties");
     }
 
+    // Validate PostgreSQL configuration
+    if (!config.postgres) {
+      throw new Error("Config must contain 'postgres' property");
+    }
+    if (!config.postgres.host || !config.postgres.database || !config.postgres.user || config.postgres.password == null) {
+      throw new Error("PostgreSQL config must contain 'host', 'database', 'user', and 'password' properties");
+    }
+    if (config.postgres.port && (config.postgres.port < 1 || config.postgres.port > 65535)) {
+      throw new Error("PostgreSQL port must be between 1 and 65535");
+    }
+
     return config;
   } catch (error) {
     if (error instanceof Error) {

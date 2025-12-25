@@ -1,3 +1,4 @@
+import type { Config } from '../config/types';
 import { type AccessRecord, database } from './database';
 import logger from './logger';
 
@@ -18,11 +19,12 @@ export class StatsCollector {
   >();
 
   /**
-   * 初始化统计收集器
+   * Initialize stats collector
+   * @param config Application configuration containing PostgreSQL settings
    */
-  async initialize(): Promise<void> {
+  async initialize(config: Config): Promise<void> {
     try {
-      await database.initialize();
+      await database.initialize(config.postgres);
       logger.info('Stats collector initialized');
     } catch (error) {
       logger.error('Failed to initialize stats collector:', error);

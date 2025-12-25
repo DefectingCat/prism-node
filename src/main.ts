@@ -25,6 +25,11 @@ async function startWorker(): Promise<void> {
       `Worker ${process.pid} failed to start servers:`,
       error instanceof Error ? error.message : String(error),
     );
+    // 输出错误到 stderr 确保父进程能捕获
+    console.error(
+      `Worker ${process.pid} failed:`,
+      error instanceof Error ? error.message : String(error),
+    );
     process.exit(1);
   }
 }
@@ -66,8 +71,8 @@ function startMaster(): void {
     // 如果工作进程异常退出，自动重启一个新的工作进程
     if (code !== 0 || signal) {
       logger.info('Starting a new worker to replace the crashed one...');
-      const newWorker = cluster.fork();
-      logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
+      // const newWorker = cluster.fork();
+      // logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
     }
   });
 
