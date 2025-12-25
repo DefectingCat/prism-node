@@ -2,8 +2,6 @@ import { Pool, type QueryResult } from 'pg';
 import type { PostgresConfig } from '../config/types';
 import logger from './logger';
 
-
-
 /**
  * 代理访问记录接口
  * 记录每次代理连接的详细信息
@@ -55,7 +53,9 @@ class Database {
     // Test connection
     try {
       const client = await this.pool.connect();
-      logger.info(`PostgreSQL database connected: ${config.host}:${config.port}/${config.database}`);
+      logger.info(
+        `PostgreSQL database connected: ${config.host}:${config.port}/${config.database}`,
+      );
       client.release();
 
       // Create tables and indexes
@@ -236,7 +236,10 @@ class Database {
         LIMIT 10
       `;
 
-      const topHostsResult: QueryResult = await this.pool.query(topHostsSQL, params);
+      const topHostsResult: QueryResult = await this.pool.query(
+        topHostsSQL,
+        params,
+      );
 
       // Handle pagination parameters
       const page = options.page || 1;
@@ -256,7 +259,10 @@ class Database {
       `;
 
       const recordParams = [...params, pageSize, offset];
-      const recordsResult: QueryResult = await this.pool.query(recordsSQL, recordParams);
+      const recordsResult: QueryResult = await this.pool.query(
+        recordsSQL,
+        recordParams,
+      );
 
       const result: {
         totalRequests: number;
@@ -276,11 +282,13 @@ class Database {
         totalBytesUp: Number(stats.total_bytes_up) || 0,
         totalBytesDown: Number(stats.total_bytes_down) || 0,
         avgDuration: Number(stats.avg_duration) || 0,
-        topHosts: topHostsResult.rows.map((host: { host: string; count: number; bytes: number }) => ({
-          host: String(host.host),
-          count: Number(host.count),
-          bytes: Number(host.bytes),
-        })),
+        topHosts: topHostsResult.rows.map(
+          (host: { host: string; count: number; bytes: number }) => ({
+            host: String(host.host),
+            count: Number(host.count),
+            bytes: Number(host.bytes),
+          }),
+        ),
         records: recordsResult.rows.map(
           (record: {
             id?: number;
@@ -338,8 +346,9 @@ class Database {
     if (!this.pool) return;
 
     try {
-      await this.pool.end();
+      const poolToClose = this.pool;
       this.pool = null;
+      await poolToClose.end();
       logger.info('Database connection pool closed');
     } catch (error) {
       logger.error('Failed to close database:', error);
