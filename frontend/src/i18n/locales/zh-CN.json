@@ -5,7 +5,8 @@
     "dashboard": "仪表盘",
     "statistics": "统计分析",
     "settings": "系统设置",
-    "about": "关于"
+    "about": "关于",
+    "logs": "日志"
   },
   "common": {
     "language": "语言",

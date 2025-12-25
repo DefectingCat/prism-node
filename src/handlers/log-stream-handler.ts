@@ -1,6 +1,5 @@
 import type { WSContext } from 'hono/ws';
 import * as winston from 'winston';
-import logger from '../utils/logger';
 
 /**
  * WebSocket log streaming handler
@@ -15,9 +14,7 @@ class LogStreamHandler {
    */
   addClient(ws: WSContext): void {
     this.clients.add(ws);
-    logger.info('Log stream client connected', {
-      totalClients: this.clients.size,
-    });
+    console.log('Log stream client connected, total clients:', this.clients.size);
   }
 
   /**
@@ -26,9 +23,7 @@ class LogStreamHandler {
    */
   removeClient(ws: WSContext): void {
     this.clients.delete(ws);
-    logger.info('Log stream client disconnected', {
-      totalClients: this.clients.size,
-    });
+    console.log('Log stream client disconnected, total clients:', this.clients.size);
   }
 
   /**

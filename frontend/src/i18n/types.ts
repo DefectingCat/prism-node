@@ -7,6 +7,7 @@ export interface TranslationResources {
     statistics: string;
     settings: string;
     about: string;
+    logs: string;
   };
   common: {
     language: string;

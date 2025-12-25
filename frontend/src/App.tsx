@@ -11,6 +11,7 @@ import { createMuiTheme } from './theme/muiTheme';
 
 const Home = lazy(() => import('./pages/Home'));
 const Stats = lazy(() => import('./pages/Stats'));
+const Logs = lazy(() => import('./pages/Logs'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 const AppContent = () => {
@@ -38,6 +39,14 @@ const AppContent = () => {
               element={
                 <Suspense fallback={<div>Loading...</div>}>
                   <Stats />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/logs"
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Logs />
                 </Suspense>
               }
             />

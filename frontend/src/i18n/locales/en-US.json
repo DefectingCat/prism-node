@@ -5,7 +5,8 @@
     "dashboard": "Dashboard",
     "statistics": "Statistics",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "logs": "Logs"
   },
   "common": { "language": "Language", "chinese": "中文", "english": "English" },
   "stats": {

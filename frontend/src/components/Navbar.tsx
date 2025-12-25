@@ -121,6 +121,16 @@ const Navbar = () => {
             <ListItem disablePadding>
               <ListItemButton
                 component={Link}
+                to="/logs"
+                onClick={handleMenuItemClick}
+              >
+                <StatisticsIcon />
+                <ListItemText primary={t('navbar.logs')} sx={{ ml: 1 }} />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
                 to="/settings"
                 onClick={handleMenuItemClick}
               >
