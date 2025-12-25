@@ -3,7 +3,11 @@ import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { lazy, Suspense, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import './App.css';
+import AboutSkeleton from './components/AboutSkeleton';
+import HomeSkeleton from './components/HomeSkeleton';
+import LogsSkeleton from './components/LogsSkeleton';
 import Navbar from './components/Navbar';
+import SettingsSkeleton from './components/SettingsSkeleton';
 import { useThemeMode } from './hooks/useThemeMode';
 import { createMuiTheme } from './theme/muiTheme';
 
@@ -28,7 +32,7 @@ const AppContent = () => {
             <Route
               path="/dashboard"
               element={
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<HomeSkeleton />}>
                   <Home />
                 </Suspense>
               }
@@ -44,7 +48,7 @@ const AppContent = () => {
             <Route
               path="/logs"
               element={
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<LogsSkeleton />}>
                   <Logs />
                 </Suspense>
               }
@@ -52,7 +56,7 @@ const AppContent = () => {
             <Route
               path="/settings"
               element={
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<SettingsSkeleton />}>
                   <Settings />
                 </Suspense>
               }
@@ -60,7 +64,7 @@ const AppContent = () => {
             <Route
               path="/about"
               element={
-                <Suspense fallback={<div>Loading...</div>}>
+                <Suspense fallback={<AboutSkeleton />}>
                   <About />
                 </Suspense>
               }
