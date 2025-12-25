@@ -101,7 +101,6 @@ export interface StatsQueryParams {
   endTime?: number;
   host?: string;
   type?: 'HTTP' | 'HTTPS';
-  limit?: number;
   page?: number;
   pageSize?: number;
 }

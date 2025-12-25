@@ -1,5 +1,6 @@
 import {
   Alert,
+  Autocomplete,
   Box,
   Card,
   CardContent,
@@ -161,11 +162,33 @@ const Home = () => {
                     },
                   }}
                 />
-                {/* Host */}
+                {/* Page */}
                 <TextField
-                  label={t('stats.host')}
-                  value={queryParams.host || ''}
-                  onChange={(e) => handleParamChange('host', e.target.value)}
+                  label={t('stats.page')}
+                  type="number"
+                  value={queryParams.page || ''}
+                  onChange={(e) => handleParamChange('page', e.target.value)}
+                  sx={{ flex: 1 }}
+                />
+                {/* Page Size */}
+                <Autocomplete
+                  freeSolo
+                  options={[10, 20, 50, 100]}
+                  value={queryParams.pageSize || null}
+                  onChange={(_, newValue) => {
+                    const value = typeof newValue === 'number' ? String(newValue) : newValue || '';
+                    handleParamChange('pageSize', value);
+                  }}
+                  onInputChange={(_, newInputValue) => {
+                    handleParamChange('pageSize', newInputValue);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label={t('stats.pageSize')}
+                      type="number"
+                    />
+                  )}
                   sx={{ flex: 1 }}
                 />
                 {/* Type */}
@@ -194,30 +217,11 @@ const Home = () => {
                 spacing={2}
                 sx={{ mb: 2 }}
               >
-                {/* Limit */}
+                {/* Host */}
                 <TextField
-                  label={t('stats.limit')}
-                  type="number"
-                  value={queryParams.limit || ''}
-                  onChange={(e) => handleParamChange('limit', e.target.value)}
-                  sx={{ flex: 1 }}
-                />
-                {/* Page */}
-                <TextField
-                  label={t('stats.page')}
-                  type="number"
-                  value={queryParams.page || ''}
-                  onChange={(e) => handleParamChange('page', e.target.value)}
-                  sx={{ flex: 1 }}
-                />
-                {/* Page Size */}
-                <TextField
-                  label={t('stats.pageSize')}
-                  type="number"
-                  value={queryParams.pageSize || ''}
-                  onChange={(e) =>
-                    handleParamChange('pageSize', e.target.value)
-                  }
+                  label={t('stats.host')}
+                  value={queryParams.host || ''}
+                  onChange={(e) => handleParamChange('host', e.target.value)}
                   sx={{ flex: 1 }}
                 />
               </Stack>
