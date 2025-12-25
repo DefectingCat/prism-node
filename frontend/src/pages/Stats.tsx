@@ -26,7 +26,8 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateRangePicker } from '@mui/x-date-pickers-pro/DateRangePicker';
 import dayjs, { Dayjs } from 'dayjs';
-import { useState } from 'react';
+import { debounce } from 'es-toolkit';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
 import type { AccessRecord, StatsQueryParams } from '../types/stats';
@@ -60,6 +61,17 @@ const Stats = () => {
 
   const [jumpToPage, setJumpToPage] = useState<string>('');
 
+  const [hostValue, setHostValue] = useState<string>('');
+  const handleHostChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setHostValue(event.target.value);
+    debouncedSetQueryParams({ host: event.target.value });
+  };
+  const debouncedSetQueryParams = useRef(
+    debounce((params: Partial<StatsQueryParams>) => {
+      setQueryParams((prev) => ({ ...prev, ...params }));
+    }, 500),
+  ).current;
+
   const {
     data: statsData,
     error,
@@ -68,31 +80,31 @@ const Stats = () => {
     keepPreviousData: true,
   });
 
-  const handleParamChange = (
-    field: keyof StatsQueryParams,
-    value: string | Dayjs | null,
-  ) => {
-    let finalValue: string | number | undefined = undefined;
+  const handleParamChange = useCallback(
+    (field: keyof StatsQueryParams, value: string | Dayjs | null) => {
+      let finalValue: string | number | undefined = undefined;
 
-    if (field === 'startTime' || field === 'endTime') {
-      if (value instanceof dayjs) {
-        finalValue = value.valueOf();
+      if (field === 'startTime' || field === 'endTime') {
+        if (value instanceof dayjs) {
+          finalValue = value.valueOf();
+        } else if (typeof value === 'string') {
+          const numericValue = isNaN(Number(value)) ? value : Number(value);
+          finalValue = numericValue === '' ? undefined : numericValue;
+        } else {
+          finalValue = undefined;
+        }
       } else if (typeof value === 'string') {
         const numericValue = isNaN(Number(value)) ? value : Number(value);
         finalValue = numericValue === '' ? undefined : numericValue;
-      } else {
-        finalValue = undefined;
       }
-    } else if (typeof value === 'string') {
-      const numericValue = isNaN(Number(value)) ? value : Number(value);
-      finalValue = numericValue === '' ? undefined : numericValue;
-    }
 
-    setQueryParams((prev) => ({
-      ...prev,
-      [field]: finalValue as string | number | undefined,
-    }));
-  };
+      setQueryParams((prev) => ({
+        ...prev,
+        [field]: finalValue as string | number | undefined,
+      }));
+    },
+    [],
+  );
 
   const handleDateRangeChange = (newValue: [Dayjs | null, Dayjs | null]) => {
     const [startDate, endDate] = newValue;
@@ -120,14 +132,17 @@ const Stats = () => {
       !isNaN(pageNumber) &&
       pageNumber >= 1 &&
       statsData &&
-      pageNumber <= Math.ceil(statsData.pagination.total / statsData.pagination.pageSize)
+      pageNumber <=
+        Math.ceil(statsData.pagination.total / statsData.pagination.pageSize)
     ) {
       setQueryParams((prev) => ({ ...prev, page: pageNumber }));
       setJumpToPage('');
     }
   };
 
-  const handleJumpToPageKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleJumpToPageKeyPress = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (event.key === 'Enter') {
       handleJumpToPage();
     }
@@ -181,8 +196,8 @@ const Stats = () => {
                   />
                   <TextField
                     label={t('stats.host')}
-                    value={queryParams.host || ''}
-                    onChange={(e) => handleParamChange('host', e.target.value)}
+                    value={hostValue}
+                    onChange={handleHostChange}
                     sx={{ flex: 1 }}
                   />
                   <FormControl sx={{ flex: 1 }}>
@@ -206,8 +221,8 @@ const Stats = () => {
             </Paper>
 
             {isLoading ? (
-              <TableContainer component={Paper}>
-                <Table>
+              <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+                <Table stickyHeader>
                   <TableHead>
                     <TableRow>
                       <TableCell>
@@ -277,8 +292,8 @@ const Stats = () => {
             ) : (
               statsData && (
                 <>
-                  <TableContainer component={Paper}>
-                    <Table>
+                  <TableContainer component={Paper} sx={{ maxHeight: 600 }}>
+                    <Table stickyHeader>
                       <TableHead>
                         <TableRow>
                           <TableCell>{t('stats.timestamp')}</TableCell>
@@ -337,7 +352,15 @@ const Stats = () => {
                       </TableBody>
                     </Table>
                   </TableContainer>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 2,
+                    }}
+                  >
                     <TablePagination
                       component="div"
                       count={statsData.pagination.total}
@@ -348,7 +371,14 @@ const Stats = () => {
                       rowsPerPageOptions={[10, 20, 50, 100]}
                       sx={{ flex: 1 }}
                     />
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pr: 2 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        pr: 2,
+                      }}
+                    >
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
                         {t('stats.jumpToPage', '跳转到')}
                       </Typography>
@@ -362,12 +392,19 @@ const Stats = () => {
                         sx={{ width: '80px' }}
                         inputProps={{
                           min: 1,
-                          max: Math.ceil(statsData.pagination.total / statsData.pagination.pageSize),
-                          style: { textAlign: 'center' }
+                          max: Math.ceil(
+                            statsData.pagination.total /
+                              statsData.pagination.pageSize,
+                          ),
+                          style: { textAlign: 'center' },
                         }}
                       />
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>
-                        / {Math.ceil(statsData.pagination.total / statsData.pagination.pageSize)}
+                        /{' '}
+                        {Math.ceil(
+                          statsData.pagination.total /
+                            statsData.pagination.pageSize,
+                        )}
                       </Typography>
                     </Box>
                   </Box>
