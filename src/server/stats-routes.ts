@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { aboutHandler } from '../handlers/about-handler';
 import { statsHandler } from '../handlers/stats-handler';
 
 /**
@@ -7,6 +8,7 @@ import { statsHandler } from '../handlers/stats-handler';
  * Available endpoints:
  * - GET /stats - Retrieves comprehensive proxy statistics with optional filtering
  * - GET /stats/active - Gets current active connection count
+ * - GET /about - Gets README.md content for About page
  * - WS /logs/stream - WebSocket endpoint for real-time log streaming
  *
  * @returns Configured Hono router with statistics endpoints
@@ -17,6 +19,9 @@ export function createStatsRoutes() {
   app.get('/stats', (c) => statsHandler.getStats(c));
 
   app.get('/stats/active', (c) => statsHandler.getActiveConnections(c));
+
+  // About 页面接口 - 返回 README.md 内容
+  app.get('/about', (c) => aboutHandler.getAbout(c));
 
   // WebSocket endpoint for real-time log streaming
   // Note: WebSocket upgrade happens at the HTTP server level

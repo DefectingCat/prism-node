@@ -13,6 +13,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Stats = lazy(() => import('./pages/Stats'));
 const Logs = lazy(() => import('./pages/Logs'));
 const Settings = lazy(() => import('./pages/Settings'));
+const About = lazy(() => import('./pages/About'));
 
 const AppContent = () => {
   const mode = useThemeMode();
@@ -55,6 +56,14 @@ const AppContent = () => {
               element={
                 <Suspense fallback={<div>Loading...</div>}>
                   <Settings />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <About />
                 </Suspense>
               }
             />

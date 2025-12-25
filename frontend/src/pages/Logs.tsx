@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { Terminal } from 'xterm';
+import { Alert, Box, Paper, Typography } from '@mui/material';
 import { FitAddon } from '@xterm/addon-fit';
-import { Box, Paper, Typography, Alert } from '@mui/material';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Terminal } from 'xterm';
 import { useApiConfig } from '../hooks/useApiConfig';
 import 'xterm/css/xterm.css';
 import { isUrl } from '../utils';
