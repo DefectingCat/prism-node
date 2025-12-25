@@ -58,7 +58,7 @@ const Home = () => {
   const [refreshIntervalTime, setRefreshIntervalTime] = useState(1000); // 默认1秒
 
   // 使用 SWR 的 refreshInterval 实现自动请求
-  const { data: statsData, error } = useSWR(
+  const { data: statsData, error, mutate } = useSWR(
     ['stats', queryParams], // 使用查询参数作为 key
     () => getStats(queryParams),
     { refreshInterval: autoRefresh ? refreshIntervalTime : 0 }, // 根据开关状态和设置的间隔时间刷新
@@ -111,6 +111,19 @@ const Home = () => {
     const [startDate, endDate] = newValue;
     handleParamChange('startTime', startDate);
     handleParamChange('endTime', endDate);
+  };
+
+  // 处理刷新间隔变化并立即应用
+  const handleRefreshIntervalApply = () => {
+    // 确保时间间隔至少为 100 毫秒
+    const validatedInterval = Math.max(100, refreshIntervalTime);
+    if (validatedInterval !== refreshIntervalTime) {
+      setRefreshIntervalTime(validatedInterval);
+    }
+    // 立即触发数据刷新
+    if (autoRefresh) {
+      mutate();
+    }
   };
 
   return (
@@ -248,13 +261,25 @@ const Home = () => {
                 <TextField
                   label={t('stats.refreshInterval')}
                   type="number"
-                  value={refreshIntervalTime / 1000} // Display in seconds for user-friendly
-                  onChange={(e) =>
-                    setRefreshIntervalTime(Number(e.target.value) * 1000)
-                  }
+                  value={refreshIntervalTime} // Display in milliseconds
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    // 允许用户输入任何数值，但不能为负数或 NaN
+                    if (!isNaN(value) && value >= 0) {
+                      setRefreshIntervalTime(value);
+                    }
+                  }}
+                  onBlur={handleRefreshIntervalApply}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleRefreshIntervalApply();
+                      e.currentTarget.blur(); // 失去焦点
+                    }
+                  }}
+                  slotProps={{ htmlInput: { min: 100 } }}
                   sx={{ flex: 1 }}
                   helperText={t('stats.refreshIntervalHelper')}
-                  // inputProps={{ min: 1 }} // At least 1 second
+                  size='small'
                 />
               </Stack>
             </Paper>

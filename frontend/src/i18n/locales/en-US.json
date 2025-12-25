@@ -43,7 +43,7 @@
     "page": "Page",
     "pageSize": "Page Size",
     "autoRefresh": "Auto Refresh",
-    "refreshInterval": "Refresh Interval (seconds)",
-    "refreshIntervalHelper": "Set the time interval for automatic data refresh, at least 1 second"
+    "refreshInterval": "Refresh Interval (ms)",
+    "refreshIntervalHelper": "Set the time interval for automatic data refresh, minimum 100 ms"
   }
 }
