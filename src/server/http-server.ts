@@ -148,7 +148,7 @@ function handleWebSocketUpgrade(
  * @param {Config} config - 服务器配置
  * @returns {Promise<void>}
  */
-export async function startHttpServer(config: Config): Promise<void> {
+export async function startHttpServer(config: Config): Promise<string> {
   // 解析 HTTP 服务器地址
   const httpAddr = parseAddress(config.http_addr);
   const staticDir = config.static_dir || './dist/html';
@@ -220,4 +220,5 @@ export async function startHttpServer(config: Config): Promise<void> {
     });
     throw error;
   }
+  return config.http_addr;
 }

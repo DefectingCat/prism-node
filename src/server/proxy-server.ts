@@ -11,7 +11,7 @@ import { parseAddress } from '../utils/utils';
  * Starts the HTTP proxy server supporting both HTTP and HTTPS traffic
  * @param config - Server configuration with listening and SOCKS5 addresses
  */
-export async function startProxy(config: Config): Promise<void> {
+export async function startProxy(config: Config): Promise<string> {
   const listenAddr = parseAddress(config.addr);
   const socksAddr = parseAddress(config.socks_addr);
 
@@ -69,4 +69,6 @@ export async function startProxy(config: Config): Promise<void> {
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  return config.addr;
 }

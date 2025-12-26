@@ -18,8 +18,13 @@ async function startWorker(): Promise<void> {
     const config = await loadConfig(configPath);
     logger.info(`Worker ${process.pid} configuration loaded successfully`);
 
-    await Promise.all([startProxy(config), startHttpServer(config)]);
+    const [proxyAddr, httpAddr] = await Promise.all([
+      startProxy(config),
+      startHttpServer(config),
+    ]);
     logger.info(`Worker ${process.pid} started successfully`);
+    logger.info(`Proxy server listening on: ${proxyAddr}`);
+    logger.info(`HTTP server listening on: ${httpAddr}`);
   } catch (error) {
     logger.error(
       `Worker ${process.pid} failed to start servers:`,
