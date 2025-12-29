@@ -22,6 +22,7 @@ export interface Config {
   socks_addr: string; // SOCKS5 proxy address to forward to (e.g., "127.0.0.1:1080")
   http_addr: string; // HTTP API server listening address (e.g., "127.0.0.1:3000")
   static_dir?: string; // Static files directory path (default: "./html")
+  log_path?: string; // Log file path (empty string means no log file)
   postgres: PostgresConfig; // PostgreSQL database configuration
 }
 

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { loadConfig } from './config/config';
 import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
-import logger from './utils/logger';
+import { configureLogger, logger } from './utils/logger';
 
 /**
  * 工作进程入口 - 启动代理服务器和 HTTP 服务器
@@ -16,6 +16,10 @@ async function startWorker(): Promise<void> {
       `Worker ${process.pid} loading configuration from ${configPath}...`,
     );
     const config = await loadConfig(configPath);
+
+    // Configure logger based on configuration
+    configureLogger(config);
+
     logger.info(`Worker ${process.pid} configuration loaded successfully`);
 
     const [proxyAddr, httpAddr] = await Promise.all([

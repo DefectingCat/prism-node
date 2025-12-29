@@ -1,22 +1,15 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import type { Config } from '../config/types';
 import {
   logStreamHandler,
   WebSocketTransport,
 } from '../handlers/log-stream-handler';
 
 /**
- * Winston logger configuration for the Prism Node proxy application
- * Provides structured logging with file and console outputs
- *
- * Features:
- * - JSON format for structured logging
- * - Separate error.log for error-level messages
- * - Combined.log for all messages
- * - Console output in development mode with colors
- * - Configurable log level via LOG_LEVEL environment variable
+ * Winston logger instance for the Prism Node proxy application
  */
-const logger = winston.createLogger({
+export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -25,30 +18,12 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'prism-node' },
   transports: [
-    // 错误日志 - 按大小和日期轮转
-    new DailyRotateFile({
-      filename: 'logs/error-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
-      maxSize: '20m', // 单个文件最大 20MB
-      maxFiles: '14d', // 保留 14 天
-      zippedArchive: true, // 压缩归档文件
-    }),
-
-    // 综合日志 - 按大小和日期轮转
-    new DailyRotateFile({
-      filename: 'logs/combined-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m', // 单个文件最大 20MB
-      maxFiles: '14d', // 保留 30 天
-      zippedArchive: true, // 压缩归档文件
-    }),
-
-    // WebSocket transport for real-time log streaming
+    // WebSocket transport for real-time log streaming (always enabled)
     new WebSocketTransport(logStreamHandler),
   ],
 });
 
+// Console output in development mode with colors
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new winston.transports.Console({
@@ -60,4 +35,35 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
+/**
+ * Configures the logger to write logs to files based on the provided configuration
+ */
+export function configureLogger(config: Config): void {
+  if (config.log_path) {
+    // Add error log transport
+    logger.add(
+      new DailyRotateFile({
+        filename: `${config.log_path}/error-%DATE%.log`,
+        datePattern: 'YYYY-MM-DD',
+        level: 'error',
+        maxSize: '20m',
+        maxFiles: '14d',
+        zippedArchive: true,
+      }),
+    );
+
+    // Add combined log transport
+    logger.add(
+      new DailyRotateFile({
+        filename: `${config.log_path}/combined-%DATE%.log`,
+        datePattern: 'YYYY-MM-DD',
+        maxSize: '20m',
+        maxFiles: '14d',
+        zippedArchive: true,
+      }),
+    );
+  }
+}
+
+// Maintain backward compatibility with default export
 export default logger;
