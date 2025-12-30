@@ -33,6 +33,17 @@ export interface DomainBlacklist {
 }
 
 /**
+ * 用户信息接口
+ */
+export interface User {
+  id?: number; // 数据库自增ID
+  username: string; // 用户名
+  email: string; // 邮箱
+  password: string; // 密码
+  createdAt?: Date; // 创建时间
+}
+
+/**
  * PostgreSQL database management class
  * Responsible for storing and querying proxy access statistics
  */
@@ -105,6 +116,14 @@ class Database {
         id SERIAL PRIMARY KEY,
         domain TEXT NOT NULL UNIQUE,
         comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -548,6 +567,190 @@ class Database {
       return Number(result.rows[0].count) > 0;
     } catch (error) {
       logger.error('Failed to check if domain is blacklisted:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Insert a new user into the database
+   * @param user User object containing username, email, and password
+   * @returns ID of inserted user record
+   */
+  async insertUser(user: User): Promise<number | null> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = `
+      INSERT INTO users (username, email, password)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (username, email) DO NOTHING
+      RETURNING id
+    `;
+
+    const params = [user.username, user.email, user.password];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rows[0]?.id || null; // Return null if user with same username or email already exists
+    } catch (error) {
+      logger.error('Failed to insert user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a user by ID
+   * @param id User ID
+   * @returns User object if found, null otherwise
+   */
+  async getUserById(id: number): Promise<User | null> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'SELECT id, username, email, created_at FROM users WHERE id = $1';
+    const params = [id];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      if (result.rowCount === 0) {
+        return null;
+      }
+      const userRow = result.rows[0];
+      return {
+        id: Number(userRow.id),
+        username: String(userRow.username),
+        email: String(userRow.email),
+        password: String(userRow.password),
+        createdAt: userRow.created_at,
+      };
+    } catch (error) {
+      logger.error('Failed to get user by ID:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a user by username
+   * @param username Username to search for
+   * @returns User object if found, null otherwise
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'SELECT id, username, email, password, created_at FROM users WHERE username = $1';
+    const params = [username];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      if (result.rowCount === 0) {
+        return null;
+      }
+      const userRow = result.rows[0];
+      return {
+        id: Number(userRow.id),
+        username: String(userRow.username),
+        email: String(userRow.email),
+        password: String(userRow.password),
+        createdAt: userRow.created_at,
+      };
+    } catch (error) {
+      logger.error('Failed to get user by username:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a user by email
+   * @param email Email to search for
+   * @returns User object if found, null otherwise
+   */
+  async getUserByEmail(email: string): Promise<User | null> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'SELECT id, username, email, password, created_at FROM users WHERE email = $1';
+    const params = [email];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      if (result.rowCount === 0) {
+        return null;
+      }
+      const userRow = result.rows[0];
+      return {
+        id: Number(userRow.id),
+        username: String(userRow.username),
+        email: String(userRow.email),
+        password: String(userRow.password),
+        createdAt: userRow.created_at,
+      };
+    } catch (error) {
+      logger.error('Failed to get user by email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a user's information
+   * @param id User ID
+   * @param user Partial user object with fields to update
+   * @returns Number of rows updated
+   */
+  async updateUser(id: number, user: Partial<User>): Promise<number> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    // Build update query dynamically based on provided fields
+    let updateClause = '';
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
+
+    if (user.username) {
+      updateClause += `username = $${paramIndex++}, `;
+      params.push(user.username);
+    }
+
+    if (user.email) {
+      updateClause += `email = $${paramIndex++}, `;
+      params.push(user.email);
+    }
+
+    if (user.password) {
+      updateClause += `password = $${paramIndex++}, `;
+      params.push(user.password);
+    }
+
+    // Remove trailing comma and space if any
+    updateClause = updateClause.slice(0, -2);
+
+    if (!updateClause) {
+      return 0; // No fields to update
+    }
+
+    const sql = `UPDATE users SET ${updateClause} WHERE id = $${paramIndex}`;
+    params.push(id);
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to update user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a user by ID
+   * @param id User ID
+   * @returns Number of rows deleted
+   */
+  async deleteUser(id: number): Promise<number> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'DELETE FROM users WHERE id = $1';
+    const params = [id];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to delete user:', error);
       throw error;
     }
   }
