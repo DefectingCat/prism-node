@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Container,
+  Skeleton,
   Snackbar,
   Stack,
   TextField,
@@ -14,6 +15,7 @@ import {
 import { useState } from 'react';
 import useSWR from 'swr';
 import { useApiConfig } from '../hooks/useApiConfig';
+import { useThemeMode } from '../hooks/useThemeMode';
 
 // 配置 SWR 的 fetcher 函数
 const fetcher = (url: string) =>
@@ -45,6 +47,7 @@ interface BlocklistsResponse {
 
 const Settings = () => {
   const { baseUrl, setBaseUrl } = useApiConfig();
+  const themeMode = useThemeMode();
   const [inputValue, setInputValue] = useState(baseUrl);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -208,22 +211,30 @@ const Settings = () => {
               </Alert>
             )}
 
-            {blacklistData && (
+            {loadingBlacklist ? (
+              <Box sx={{ mt: 1, borderRadius: 1, height: '500px' }}>
+                {/* 编辑器骨架屏 */}
+                <Skeleton variant="rectangular" height="100%" />
+              </Box>
+            ) : (
               <Box
                 sx={{
                   mt: 1,
-                  p: 2,
-                  bgcolor: '#f5f5f5',
                   borderRadius: 1,
                   overflowX: 'auto',
-                  height: '400px', // 设置编辑器高度
+                  height: '500px', // 设置编辑器高度
                 }}
               >
                 <MonacoEditor
                   width="100%"
                   height="100%"
                   language="json"
-                  value={JSON.stringify(blacklistData.data.blacklist, null, 2)}
+                  value={JSON.stringify(
+                    blacklistData?.data?.blacklist,
+                    null,
+                    2,
+                  )}
+                  theme={themeMode === 'dark' ? 'vs-dark' : 'vs'}
                   options={{
                     readOnly: true, // 设置为只读模式，仅用于展示
                     minimap: { enabled: true }, // 显示迷你地图
@@ -232,12 +243,6 @@ const Settings = () => {
                   }}
                 />
               </Box>
-            )}
-
-            {!blacklistData && !loadingBlacklist && !blacklistError && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                无黑名单数据
-              </Typography>
             )}
           </Stack>
         </CardContent>
