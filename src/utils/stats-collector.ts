@@ -205,12 +205,7 @@ export class StatsCollector {
     options: { page?: number; pageSize?: number } = {},
   ): Promise<{
     total: number;
-    blacklist: Array<{
-      id?: number;
-      domain: string;
-      comment?: string;
-      createdAt?: Date;
-    }>;
+    blacklist: Array<string>;
     pagination?: {
       page: number;
       pageSize: number;
@@ -219,9 +214,25 @@ export class StatsCollector {
     };
   }> {
     try {
-      return await database.getDomainBlacklist(options);
+      return await database.getDomainBlacklistPaginated(options);
     } catch (error) {
       logger.error('[STATS] Failed to get domain blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Edits the domain blacklist configuration
+   *
+   * @param domains - An array of domain strings to set as the new blacklist
+   * @returns A promise that resolves when the blacklist is updated
+   */
+  async editDomainBlacklist(domains: string[]): Promise<void> {
+    try {
+      await database.editDomainBlacklist(domains);
+      logger.info('Domain blacklist updated successfully.');
+    } catch (error) {
+      logger.error('[STATS] Failed to edit domain blacklist:', error);
       throw error;
     }
   }

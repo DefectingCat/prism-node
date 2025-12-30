@@ -171,6 +171,44 @@ export class StatsHandler {
       );
     }
   }
+
+  /**
+   * Edits the domain blacklist configuration
+   *
+   * @param c - Hono context object
+   * @returns JSON response indicating success or failure
+   */
+  async editDomainBlacklist(c: Context) {
+    try {
+      const { domains } = await c.req.json();
+
+      if (!Array.isArray(domains)) {
+        return c.json(
+          {
+            success: false,
+            error: 'Invalid request body. Expected an array of domains.',
+          },
+          400,
+        );
+      }
+
+      await statsCollector.editDomainBlacklist(domains);
+
+      return c.json({
+        success: true,
+        message: 'Domain blacklist updated successfully.',
+      });
+    } catch (error) {
+      logger.error('编辑域名黑名单失败:', error);
+      return c.json(
+        {
+          success: false,
+          error: '编辑域名黑名单失败',
+        },
+        500,
+      );
+    }
+  }
 }
 
 export const statsHandler = new StatsHandler();

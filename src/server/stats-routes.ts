@@ -22,9 +22,9 @@ export const logsStreamRoute = new Hono().get('/', (c) => {
 });
 
 // Domain Blacklist Routes - /api/blocklists
-export const blocklistsRoutes = new Hono().get('/', (c) =>
-  statsHandler.getDomainBlacklist(c),
-);
+export const blocklistsRoutes = new Hono()
+  .get('/', (c) => statsHandler.getDomainBlacklist(c))
+  .post('/', (c) => statsHandler.editDomainBlacklist(c));
 
 /**
  * Creates and configures statistics API routes for the proxy server

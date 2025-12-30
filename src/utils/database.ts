@@ -363,12 +363,13 @@ class Database {
    */
   async insertDomainBlacklist(
     domainBlacklist: DomainBlacklist,
-  ): Promise<number> {
+  ): Promise<number | null> {
     if (!this.pool) throw new Error('Database not initialized');
 
     const sql = `
       INSERT INTO domain_blacklist (domain, comment)
       VALUES ($1, $2)
+      ON CONFLICT (domain) DO NOTHING
       RETURNING id
     `;
 
@@ -376,7 +377,7 @@ class Database {
 
     try {
       const result: QueryResult = await this.pool.query(sql, params);
-      return result.rows[0].id;
+      return result.rows[0]?.id || null; // Return null if no row was inserted (due to conflict)
     } catch (error) {
       logger.error('Failed to insert domain into blacklist:', error);
       throw error;
@@ -388,11 +389,11 @@ class Database {
    * @param options Query options with pagination parameters
    * @returns Array of domain blacklist entries with pagination information
    */
-  async getDomainBlacklist(
+  async getDomainBlacklistPaginated(
     options: { page?: number; pageSize?: number } = {},
   ): Promise<{
     total: number;
-    blacklist: DomainBlacklist[];
+    blacklist: string[];
     pagination?: {
       page: number;
       pageSize: number;
@@ -425,12 +426,7 @@ class Database {
           domain: string;
           comment?: string;
           created_at: Date;
-        }) => ({
-          id: Number(entry.id),
-          domain: String(entry.domain),
-          comment: entry.comment ? String(entry.comment) : undefined,
-          createdAt: entry.created_at,
-        }),
+        }) => String(entry.domain),
       );
 
       const pagination = {
@@ -447,6 +443,70 @@ class Database {
       };
     } catch (error) {
       logger.error('Failed to get domain blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves all domain blacklist entries from the database.
+   *
+   * @returns A promise that resolves to an array of all DomainBlacklist objects.
+   */
+  async getDomainBlacklist(): Promise<DomainBlacklist[]> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    try {
+      const sql =
+        'SELECT id, domain, comment, created_at FROM domain_blacklist ORDER BY created_at DESC';
+      const result: QueryResult = await this.pool.query(sql);
+      return result.rows.map(
+        (entry: {
+          id: number;
+          domain: string;
+          comment?: string;
+          created_at: Date;
+        }) => ({
+          id: Number(entry.id),
+          domain: String(entry.domain),
+          comment: entry.comment ? String(entry.comment) : undefined,
+          createdAt: entry.created_at,
+        }),
+      );
+    } catch (error) {
+      logger.error('Failed to get all domain blacklist entries:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Edits the domain blacklist by replacing all existing entries with a new set of domains.
+   * This operation is performed within a transaction.
+   *
+   * @param domains - An array of domain strings to set as the new blacklist.
+   * @returns A promise that resolves when the blacklist is updated.
+   */
+  async editDomainBlacklist(domains: string[]): Promise<void> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    try {
+      // Start a transaction
+      await this.pool.query('BEGIN');
+
+      // Clear existing blacklist
+      await this.pool.query('TRUNCATE TABLE domain_blacklist RESTART IDENTITY');
+
+      // Insert new domains
+      for (const domain of domains) {
+        await this.insertDomainBlacklist({ domain });
+      }
+
+      // Commit the transaction
+      await this.pool.query('COMMIT');
+      logger.info('Domain blacklist updated successfully in database.');
+    } catch (error) {
+      // Rollback on error
+      await this.pool.query('ROLLBACK');
+      logger.error('Failed to edit domain blacklist in database:', error);
       throw error;
     }
   }
