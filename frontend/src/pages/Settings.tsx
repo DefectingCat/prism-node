@@ -1,3 +1,4 @@
+import MonacoEditor from '@monaco-editor/react';
 import {
   Alert,
   Box,
@@ -11,13 +12,53 @@ import {
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import useSWR from 'swr';
 import { useApiConfig } from '../hooks/useApiConfig';
+
+// 配置 SWR 的 fetcher 函数
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) {
+      throw new Error('Network response was not ok');
+    }
+    return res.json();
+  });
+
+// Define TypeScript interfaces for the blocklists API response
+interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+interface BlacklistData {
+  total: number;
+  blacklist: string[]; // Blacklist is an array of strings from API response
+  pagination: Pagination;
+}
+
+interface BlocklistsResponse {
+  success: boolean;
+  data: BlacklistData;
+}
 
 const Settings = () => {
   const { baseUrl, setBaseUrl } = useApiConfig();
   const [inputValue, setInputValue] = useState(baseUrl);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // 使用 useSWR 获取黑名单数据并类型断言
+  const {
+    data: blacklistData,
+    error: blacklistError,
+    isLoading: loadingBlacklist,
+    mutate: refreshBlacklist,
+  } = useSWR<BlocklistsResponse>(`${baseUrl}/blocklists`, fetcher, {
+    refreshInterval: 0, // 不自动刷新
+  });
+  console.log('blacklistData', blacklistData);
 
   /**
    * 验证 URL 格式
@@ -137,6 +178,67 @@ const Settings = () => {
                 恢复默认
               </Button>
             </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
+
+      {/* 黑名单配置 */}
+      <Card sx={{ mt: 3 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            域名黑名单配置
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            以下是当前数据库中的域名黑名单配置信息：
+          </Typography>
+
+          <Stack spacing={2}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => refreshBlacklist()}
+              disabled={loadingBlacklist}
+            >
+              {loadingBlacklist ? '加载中...' : '刷新黑名单'}
+            </Button>
+
+            {blacklistError && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {blacklistError}
+              </Alert>
+            )}
+
+            {blacklistData && (
+              <Box
+                sx={{
+                  mt: 1,
+                  p: 2,
+                  bgcolor: '#f5f5f5',
+                  borderRadius: 1,
+                  overflowX: 'auto',
+                  height: '400px', // 设置编辑器高度
+                }}
+              >
+                <MonacoEditor
+                  width="100%"
+                  height="100%"
+                  language="json"
+                  value={JSON.stringify(blacklistData.data.blacklist, null, 2)}
+                  options={{
+                    readOnly: true, // 设置为只读模式，仅用于展示
+                    minimap: { enabled: true }, // 显示迷你地图
+                    lineNumbers: 'on', // 显示行号
+                    scrollBeyondLastLine: false, // 禁止滚动到最后一行之后
+                  }}
+                />
+              </Box>
+            )}
+
+            {!blacklistData && !loadingBlacklist && !blacklistError && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                无黑名单数据
+              </Typography>
+            )}
           </Stack>
         </CardContent>
       </Card>

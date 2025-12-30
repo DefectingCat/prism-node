@@ -206,7 +206,7 @@ const Home = () => {
 
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
+                {JSON.stringify(error)}
               </Alert>
             )}
 
