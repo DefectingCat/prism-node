@@ -126,6 +126,51 @@ export class StatsHandler {
       );
     }
   }
+
+  /**
+   * Retrieves the domain blacklist configuration
+   *
+   * Query parameters:
+   * - page: Page number for pagination
+   * - pageSize: Records per page
+   *
+   * @param c - Hono context object
+   * @returns JSON response with domain blacklist and pagination information
+   */
+  async getDomainBlacklist(c: Context) {
+    try {
+      const query = c.req.query();
+
+      const options: {
+        page?: number;
+        pageSize?: number;
+      } = {};
+
+      if (query.page) {
+        options.page = Math.max(1, Number(query.page));
+      }
+
+      if (query.pageSize) {
+        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
+      }
+
+      const blacklist = await statsCollector.getDomainBlacklist(options);
+
+      return c.json({
+        success: true,
+        data: blacklist,
+      });
+    } catch (error) {
+      logger.error('获取域名黑名单失败:', error);
+      return c.json(
+        {
+          success: false,
+          error: '获取域名黑名单失败',
+        },
+        500,
+      );
+    }
+  }
 }
 
 export const statsHandler = new StatsHandler();

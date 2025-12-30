@@ -36,5 +36,8 @@ export function createStatsRoutes() {
     });
   });
 
+  // Get domain blacklist configuration
+  app.get('/blocklists', (c) => statsHandler.getDomainBlacklist(c));
+
   return app;
 }

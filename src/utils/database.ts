@@ -23,6 +23,16 @@ export interface AccessRecord {
 }
 
 /**
+ * 域名黑名单配置接口
+ */
+export interface DomainBlacklist {
+  id?: number; // 数据库自增ID
+  domain: string; // 域名
+  comment?: string; // 备注
+  createdAt?: Date; // 创建时间
+}
+
+/**
  * PostgreSQL database management class
  * Responsible for storing and querying proxy access statistics
  */
@@ -88,6 +98,13 @@ class Database {
         bytes_down BIGINT NOT NULL DEFAULT 0,
         status TEXT NOT NULL CHECK (status IN ('success', 'error', 'timeout')),
         error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS domain_blacklist (
+        id SERIAL PRIMARY KEY,
+        domain TEXT NOT NULL UNIQUE,
+        comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -335,6 +352,142 @@ class Database {
       return result;
     } catch (error) {
       logger.error('Failed to get stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Insert a domain into the blacklist
+   * @param domainBlacklist Domain blacklist object
+   * @returns ID of inserted record
+   */
+  async insertDomainBlacklist(
+    domainBlacklist: DomainBlacklist,
+  ): Promise<number> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = `
+      INSERT INTO domain_blacklist (domain, comment)
+      VALUES ($1, $2)
+      RETURNING id
+    `;
+
+    const params = [domainBlacklist.domain, domainBlacklist.comment || null];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rows[0].id;
+    } catch (error) {
+      logger.error('Failed to insert domain into blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all domain blacklist entries with pagination
+   * @param options Query options with pagination parameters
+   * @returns Array of domain blacklist entries with pagination information
+   */
+  async getDomainBlacklist(
+    options: { page?: number; pageSize?: number } = {},
+  ): Promise<{
+    total: number;
+    blacklist: DomainBlacklist[];
+    pagination?: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    // Get total record count
+    const countSQL = 'SELECT COUNT(*) as total FROM domain_blacklist';
+    const countResult: QueryResult = await this.pool.query(countSQL);
+    const total = Number(countResult.rows[0].total) || 0;
+
+    // Handle pagination parameters
+    const page = options.page || 1;
+    const pageSize = options.pageSize || 10;
+    const offset = (page - 1) * pageSize;
+
+    // Get blacklist entries with pagination
+    const sql =
+      'SELECT * FROM domain_blacklist ORDER BY created_at DESC LIMIT $1 OFFSET $2';
+    const params = [pageSize, offset];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      const blacklist = result.rows.map(
+        (entry: {
+          id: number;
+          domain: string;
+          comment?: string;
+          created_at: Date;
+        }) => ({
+          id: Number(entry.id),
+          domain: String(entry.domain),
+          comment: entry.comment ? String(entry.comment) : undefined,
+          createdAt: entry.created_at,
+        }),
+      );
+
+      const pagination = {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      };
+
+      return {
+        total,
+        blacklist,
+        pagination,
+      };
+    } catch (error) {
+      logger.error('Failed to get domain blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a domain from the blacklist by ID
+   * @param id ID of the domain blacklist entry
+   * @returns Number of rows deleted
+   */
+  async deleteDomainBlacklist(id: number): Promise<number> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'DELETE FROM domain_blacklist WHERE id = $1';
+    const params = [id];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to delete domain from blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a domain is in the blacklist
+   * @param domain Domain to check
+   * @returns True if domain is in blacklist, false otherwise
+   */
+  async isDomainBlacklisted(domain: string): Promise<boolean> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql =
+      'SELECT COUNT(*) as count FROM domain_blacklist WHERE domain = $1';
+    const params = [domain];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return Number(result.rows[0].count) > 0;
+    } catch (error) {
+      logger.error('Failed to check if domain is blacklisted:', error);
       throw error;
     }
   }

@@ -197,6 +197,36 @@ export class StatsCollector {
   }
 
   /**
+   * 获取域名黑名单配置
+   * @param options 查询选项，包含分页参数
+   * @returns 域名黑名单列表及分页信息
+   */
+  async getDomainBlacklist(
+    options: { page?: number; pageSize?: number } = {},
+  ): Promise<{
+    total: number;
+    blacklist: Array<{
+      id?: number;
+      domain: string;
+      comment?: string;
+      createdAt?: Date;
+    }>;
+    pagination?: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }> {
+    try {
+      return await database.getDomainBlacklist(options);
+    } catch (error) {
+      logger.error('[STATS] Failed to get domain blacklist:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 关闭统计收集器
    * 结束所有活跃连接并关闭数据库
    */
