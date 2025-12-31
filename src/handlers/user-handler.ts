@@ -31,7 +31,10 @@ export class UserHandler {
 
       // Hash the password with bcryptjs
       const salt = await bcryptjs.genSalt(10);
-      const hashedPassword = await bcryptjs.hash(userData.password, salt);
+      const hashedPassword = await bcryptjs.hash(
+        userData.password.toString(),
+        salt,
+      );
 
       // Create user object with hashed password
       const user = {

@@ -582,7 +582,7 @@ class Database {
     const sql = `
       INSERT INTO users (username, email, password)
       VALUES ($1, $2, $3)
-      ON CONFLICT (username, email) DO NOTHING
+      ON CONFLICT (email) DO NOTHING
       RETURNING id
     `;
 
