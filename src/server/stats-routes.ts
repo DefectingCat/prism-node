@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { aboutHandler } from '../handlers/about-handler';
 import { statsHandler } from '../handlers/stats-handler';
+import { userHandler } from '../handlers/user-handler';
 
 // Statistics Routes - /api/stats
 export const statsRoutes = new Hono()
@@ -21,6 +22,11 @@ export const logsStreamRoute = new Hono().get('/', (c) => {
   });
 });
 
+// User Routes - /api/users
+export const usersRoutes = new Hono().post('/create', (c) =>
+  userHandler.createUser(c),
+);
+
 // Domain Blacklist Routes - /api/blocklists
 export const blocklistsRoutes = new Hono()
   .get('/', (c) => statsHandler.getDomainBlacklist(c))
@@ -34,6 +40,7 @@ export const blocklistsRoutes = new Hono()
  * - GET /stats/active - Gets current active connection count
  * - GET /about - Gets README.md content for About page
  * - WS /logs/stream - WebSocket endpoint for real-time log streaming
+ * - POST /users/create - Creates a new user
  *
  * @returns Configured Hono router with statistics endpoints
  */
@@ -45,6 +52,7 @@ export function createStatsRoutes() {
   app.route('/about', aboutRoute);
   app.route('/logs/stream', logsStreamRoute);
   app.route('/blocklists', blocklistsRoutes);
+  app.route('/users', usersRoutes);
 
   return app;
 }

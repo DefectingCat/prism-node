@@ -605,7 +605,8 @@ class Database {
   async getUserById(id: number): Promise<User | null> {
     if (!this.pool) throw new Error('Database not initialized');
 
-    const sql = 'SELECT id, username, email, created_at FROM users WHERE id = $1';
+    const sql =
+      'SELECT id, username, email, created_at FROM users WHERE id = $1';
     const params = [id];
 
     try {
@@ -635,7 +636,8 @@ class Database {
   async getUserByUsername(username: string): Promise<User | null> {
     if (!this.pool) throw new Error('Database not initialized');
 
-    const sql = 'SELECT id, username, email, password, created_at FROM users WHERE username = $1';
+    const sql =
+      'SELECT id, username, email, password, created_at FROM users WHERE username = $1';
     const params = [username];
 
     try {
@@ -665,7 +667,8 @@ class Database {
   async getUserByEmail(email: string): Promise<User | null> {
     if (!this.pool) throw new Error('Database not initialized');
 
-    const sql = 'SELECT id, username, email, password, created_at FROM users WHERE email = $1';
+    const sql =
+      'SELECT id, username, email, password, created_at FROM users WHERE email = $1';
     const params = [email];
 
     try {
