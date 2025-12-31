@@ -1,6 +1,8 @@
 import cluster from 'node:cluster';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { loadConfig } from './config/config';
 import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
@@ -9,9 +11,9 @@ import { configureLogger, logger } from './utils/logger';
 /**
  * 工作进程入口 - 启动代理服务器和 HTTP 服务器
  */
-async function startWorker(): Promise<void> {
+async function startWorker(workerConfigPath: string): Promise<void> {
   try {
-    const configPath = path.join(process.cwd(), 'config.json');
+    const configPath = workerConfigPath;
     logger.info(
       `Worker ${process.pid} loading configuration from ${configPath}...`,
     );
@@ -120,14 +122,37 @@ function startMaster(): void {
 /**
  * Main entry point - 根据进程角色启动主进程或工作进程
  */
-function main(): void {
+async function main(): Promise<void> {
+  // 解析 CLI 参数
+  const argv = await yargs(hideBin(process.argv))
+    .option('config', {
+      alias: 'c',
+      type: 'string',
+      description: 'Path to configuration file',
+      default: 'config.json',
+    })
+    .help()
+    .alias('help', 'h')
+    .parse();
+
+  // 处理帮助请求 - 如果请求帮助，直接退出
+  if (argv.help) {
+    process.exit(0);
+  }
+
+  // 解析配置文件路径
+  const configPath = path.isAbsolute(argv.config)
+    ? argv.config
+    : path.join(process.cwd(), argv.config);
+
   if (cluster.isPrimary) {
     // 主进程：负责管理工作进程和负载均衡
     startMaster();
   } else {
     // 工作进程：启动服务器
-    startWorker();
+    await startWorker(configPath);
   }
 }
 
+// 启动应用
 main();

@@ -8,7 +8,7 @@
     "tsc": "tsc",
     "build:bin": "pnpm run build && pkg dist/main.js -o prism-node",
     "build": "node scripts/build.mjs",
-    "dev": "ts-node src/main.ts",
+    "dev": "ts-node src/main.ts -c ./config-dev.json",
     "start": "node dist/main.js",
     "watch": "tsc --watch",
     "fix": "biome format --write . && biome lint --write . && biome check --write .",
@@ -34,12 +34,14 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
+    "@types/yargs": "^17.0.35",
     "hono": "^4.10.7",
     "json5": "^2.2.3",
     "pg": "^8.13.1",
     "socks": "^2.8.7",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "yargs": "^18.0.0"
   }
 }
