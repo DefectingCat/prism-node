@@ -5,11 +5,11 @@ import { userHandler } from '../handlers/user-handler';
 
 // Statistics Routes - /api/stats
 export const statsRoutes = new Hono()
-  .get('/', (c) => statsHandler.getStats(c))
-  .get('/active', (c) => statsHandler.getActiveConnections(c));
+  .get('/', statsHandler.getStats)
+  .get('/active', statsHandler.getActiveConnections);
 
 // About Routes - /api/about
-export const aboutRoute = new Hono().get('/', (c) => aboutHandler.getAbout(c));
+export const aboutRoute = new Hono().get('/', aboutHandler.getAbout);
 
 // WebSocket Info Route - /api/logs/stream
 export const logsStreamRoute = new Hono().get('/', (c) => {

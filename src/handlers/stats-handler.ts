@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { z } from 'zod';
 import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
 
@@ -23,7 +24,18 @@ export class StatsHandler {
    */
   async getStats(c: Context) {
     try {
-      const query = c.req.query();
+      // Define Zod schema for query parameters
+      const statsQuerySchema = z.object({
+        startTime: z.coerce.number().optional(),
+        endTime: z.coerce.number().optional(),
+        host: z.string().optional(),
+        type: z.enum(['HTTP', 'HTTPS']).optional(),
+        page: z.coerce.number().min(1).optional(),
+        pageSize: z.coerce.number().min(1).max(1000).optional(),
+      });
+
+      // Validate query parameters
+      const validatedQuery = statsQuerySchema.parse(c.req.query());
 
       const options: {
         startTime?: number;
@@ -32,31 +44,14 @@ export class StatsHandler {
         type?: 'HTTP' | 'HTTPS';
         page?: number;
         pageSize?: number;
-      } = {};
-
-      if (query.startTime) {
-        options.startTime = Number(query.startTime);
-      }
-
-      if (query.endTime) {
-        options.endTime = Number(query.endTime);
-      }
-
-      if (query.host) {
-        options.host = query.host;
-      }
-
-      if (query.type && (query.type === 'HTTP' || query.type === 'HTTPS')) {
-        options.type = query.type;
-      }
-
-      if (query.page) {
-        options.page = Math.max(1, Number(query.page));
-      }
-
-      if (query.pageSize) {
-        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
-      }
+      } = {
+        startTime: validatedQuery.startTime,
+        endTime: validatedQuery.endTime,
+        host: validatedQuery.host,
+        type: validatedQuery.type,
+        page: validatedQuery.page,
+        pageSize: validatedQuery.pageSize,
+      };
 
       const stats = await statsCollector.getStats(options);
       const activeConnections = statsCollector.getActiveConnections();
@@ -69,6 +64,16 @@ export class StatsHandler {
         },
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的查询参数',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
       logger.error('获取统计信息失败:', error);
       return c.json(
         {
@@ -92,20 +97,22 @@ export class StatsHandler {
    */
   async getActiveConnections(c: Context) {
     try {
-      const query = c.req.query();
+      // Define Zod schema for query parameters
+      const activeConnectionsQuerySchema = z.object({
+        page: z.coerce.number().min(1).optional(),
+        pageSize: z.coerce.number().min(1).max(1000).optional(),
+      });
+
+      // Validate query parameters
+      const validatedQuery = activeConnectionsQuerySchema.parse(c.req.query());
 
       const options: {
         page?: number;
         pageSize?: number;
-      } = {};
-
-      if (query.page) {
-        options.page = Math.max(1, Number(query.page));
-      }
-
-      if (query.pageSize) {
-        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
-      }
+      } = {
+        page: validatedQuery.page,
+        pageSize: validatedQuery.pageSize,
+      };
 
       const activeConnections = statsCollector.getActiveConnections(options);
 
@@ -116,6 +123,16 @@ export class StatsHandler {
         },
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的查询参数',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
       logger.error('获取活跃连接数失败:', error);
       return c.json(
         {
@@ -139,20 +156,22 @@ export class StatsHandler {
    */
   async getDomainBlacklist(c: Context) {
     try {
-      const query = c.req.query();
+      // Define Zod schema for query parameters
+      const domainBlacklistQuerySchema = z.object({
+        page: z.coerce.number().min(1).optional(),
+        pageSize: z.coerce.number().min(1).max(1000).optional(),
+      });
+
+      // Validate query parameters
+      const validatedQuery = domainBlacklistQuerySchema.parse(c.req.query());
 
       const options: {
         page?: number;
         pageSize?: number;
-      } = {};
-
-      if (query.page) {
-        options.page = Math.max(1, Number(query.page));
-      }
-
-      if (query.pageSize) {
-        options.pageSize = Math.min(1000, Math.max(1, Number(query.pageSize)));
-      }
+      } = {
+        page: validatedQuery.page,
+        pageSize: validatedQuery.pageSize,
+      };
 
       const blacklist = await statsCollector.getDomainBlacklist(options);
 
@@ -161,6 +180,16 @@ export class StatsHandler {
         data: blacklist,
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的查询参数',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
       logger.error('获取域名黑名单失败:', error);
       return c.json(
         {
@@ -180,17 +209,13 @@ export class StatsHandler {
    */
   async editDomainBlacklist(c: Context) {
     try {
-      const { domains } = await c.req.json();
+      // Define Zod schema for request body
+      const editDomainBlacklistSchema = z.object({
+        domains: z.array(z.string()),
+      });
 
-      if (!Array.isArray(domains)) {
-        return c.json(
-          {
-            success: false,
-            error: 'Invalid request body. Expected an array of domains.',
-          },
-          400,
-        );
-      }
+      // Validate request body
+      const { domains } = editDomainBlacklistSchema.parse(await c.req.json());
 
       await statsCollector.editDomainBlacklist(domains);
 
@@ -199,6 +224,16 @@ export class StatsHandler {
         message: 'Domain blacklist updated successfully.',
       });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的请求体',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
       logger.error('编辑域名黑名单失败:', error);
       return c.json(
         {

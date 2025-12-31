@@ -7,7 +7,7 @@ import logger from '../utils/logger';
 // Define Zod schema for User validation
 const UserSchema = z.object({
   username: z.string().min(1, 'Username must be a non-empty string').trim(),
-  email: z.string().email('Email must be a valid email address').trim(),
+  email: z.email('Email must be a valid email address').trim(),
   password: z
     .string()
     .min(8, 'Password must be a string of at least 8 characters'),
