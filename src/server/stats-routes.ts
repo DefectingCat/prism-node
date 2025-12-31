@@ -23,14 +23,12 @@ export const logsStreamRoute = new Hono().get('/', (c) => {
 });
 
 // User Routes - /api/users
-export const usersRoutes = new Hono().post('/create', (c) =>
-  userHandler.createUser(c),
-);
+export const usersRoutes = new Hono().post('/create', userHandler.createUser);
 
 // Domain Blacklist Routes - /api/blocklists
 export const blocklistsRoutes = new Hono()
-  .get('/', (c) => statsHandler.getDomainBlacklist(c))
-  .post('/', (c) => statsHandler.editDomainBlacklist(c));
+  .get('/', statsHandler.getDomainBlacklist)
+  .post('/', statsHandler.editDomainBlacklist);
 
 /**
  * Creates and configures statistics API routes for the proxy server
