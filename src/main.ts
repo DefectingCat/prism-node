@@ -8,6 +8,7 @@ import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
 import { configureLogger, logger } from './utils/logger';
 import CronManager from './utils/cron-manager';
+import { database } from './utils/database';
 
 /**
  * 工作进程入口 - 启动代理服务器和 HTTP 服务器
@@ -64,6 +65,9 @@ async function startMaster(configPath: string): Promise<void> {
     logger.info(`CPU cores detected: ${numCPUs}`);
     logger.info(`Creating ${numCPUs} worker processes for load balancing`);
 
+    // 初始化数据库连接（主进程需要单独初始化以执行定时任务）
+    await database.initialize(config.postgres);
+
     // 检查是否配置了 cron 任务
     if (config.cron) {
       logger.info(`Cron configuration found: ${config.cron}`);
@@ -72,8 +76,13 @@ async function startMaster(configPath: string): Promise<void> {
         name: 'main-cron-task',
         schedule: config.cron,
         callback: async () => {
-          logger.info('Main cron task executed (callback to be implemented)');
-          // TODO: 实现具体的定时任务逻辑
+          logger.info('Main cron task executed - truncating access logs');
+          try {
+            await database.truncateAccessLogs();
+            logger.info('Access logs truncated successfully');
+          } catch (error) {
+            logger.error('Failed to truncate access logs:', error);
+          }
         },
         enabled: true,
       });

@@ -759,6 +759,24 @@ class Database {
   }
 
   /**
+   * Truncate access logs table (clear all records)
+   * @returns Number of rows deleted (always 0 for TRUNCATE)
+   */
+  async truncateAccessLogs(): Promise<void> {
+    if (!this.pool) throw new Error('Database not initialized');
+
+    const sql = 'TRUNCATE TABLE access_logs RESTART IDENTITY';
+
+    try {
+      await this.pool.query(sql);
+      logger.info('Access logs table truncated successfully');
+    } catch (error) {
+      logger.error('Failed to truncate access logs table:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Close database connection
    */
   async close(): Promise<void> {
