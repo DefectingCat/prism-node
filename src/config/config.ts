@@ -39,6 +39,17 @@ export async function loadConfig(configPath: string): Promise<Config> {
       throw new Error('PostgreSQL port must be between 1 and 65535');
     }
 
+    // 验证 cron 表达式（可选）
+    if (config.cron) {
+      // 简单验证 cron 表达式格式（5或6个字段，支持常用格式）
+      const cronPattern = /^(\*|(\d+|[\d,-/*]+))(\s+(\*|(\d+|[\d,-/*]+))){4,5}$/;
+      if (!cronPattern.test(config.cron.trim())) {
+        throw new Error(
+          "Cron configuration must be a valid cron expression (e.g., '0 * * * *')",
+        );
+      }
+    }
+
     return config;
   } catch (error) {
     if (error instanceof Error) {

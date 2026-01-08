@@ -24,6 +24,7 @@ export interface Config {
   static_dir?: string; // Static files directory path (default: "./html")
   log_path?: string; // Log file path (empty string means no log file)
   postgres: PostgresConfig; // PostgreSQL database configuration
+  cron?: string; // Node-cron schedule expression (e.g., "0 * * * *" for every hour)
 }
 
 /**
