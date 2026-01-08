@@ -7,6 +7,7 @@ import { loadConfig } from './config/config';
 import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
 import { configureLogger, logger } from './utils/logger';
+import CronManager from './utils/cron-manager';
 
 /**
  * 工作进程入口 - 启动代理服务器和 HTTP 服务器
@@ -48,75 +49,110 @@ async function startWorker(workerConfigPath: string): Promise<void> {
 /**
  * 主进程入口 - 根据 CPU 核心数创建工作进程
  */
-function startMaster(): void {
-  const numCPUs = os.cpus().length;
-  logger.info(`Master process ${process.pid} starting...`);
-  logger.info(`CPU cores detected: ${numCPUs}`);
-  logger.info(`Creating ${numCPUs} worker processes for load balancing`);
-
-  // 为每个 CPU 核心创建一个工作进程
-  for (let i = 0; i < numCPUs; i++) {
-    const worker = cluster.fork();
-    logger.info(`Forked worker ${worker.process.pid} (${i + 1}/${numCPUs})`);
-  }
-
-  // 监听工作进程上线事件
-  cluster.on('online', (worker) => {
-    logger.info(`Worker ${worker.process.pid} is online and ready`);
-  });
-
-  // 监听工作进程退出事件，自动重启崩溃的工作进程
-  cluster.on('exit', (worker, code, signal) => {
-    if (signal) {
-      logger.warn(
-        `Worker ${worker.process.pid} was killed by signal: ${signal}`,
-      );
-    } else if (code !== 0) {
-      logger.error(
-        `Worker ${worker.process.pid} exited with error code: ${code}`,
-      );
-    } else {
-      logger.info(`Worker ${worker.process.pid} exited normally`);
-    }
-
-    // 如果工作进程异常退出，自动重启一个新的工作进程
-    if (code !== 0 || signal) {
-      logger.info('Starting a new worker to replace the crashed one...');
-      // const newWorker = cluster.fork();
-      // logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
-    }
-  });
-
-  // 优雅关闭：接收到退出信号时，关闭所有工作进程
-  const gracefulShutdown = (signal: string) => {
+async function startMaster(configPath: string): Promise<void> {
+  try {
     logger.info(
-      `Master ${process.pid} received ${signal}, shutting down workers...`,
+      `Master ${process.pid} loading configuration from ${configPath}...`,
     );
+    const config = await loadConfig(configPath);
 
-    for (const id in cluster.workers) {
-      const worker = cluster.workers[id];
-      if (worker) {
-        logger.info(`Shutting down worker ${worker.process.pid}`);
-        worker.kill();
-      }
+    // Configure logger based on configuration
+    configureLogger(config);
+
+    logger.info(`Master process ${process.pid} starting...`);
+    const numCPUs = os.cpus().length;
+    logger.info(`CPU cores detected: ${numCPUs}`);
+    logger.info(`Creating ${numCPUs} worker processes for load balancing`);
+
+    // 检查是否配置了 cron 任务
+    if (config.cron) {
+      logger.info(`Cron configuration found: ${config.cron}`);
+      // 添加定时任务，回调函数先空着
+      CronManager.addTask({
+        name: 'main-cron-task',
+        schedule: config.cron,
+        callback: async () => {
+          logger.info('Main cron task executed (callback to be implemented)');
+          // TODO: 实现具体的定时任务逻辑
+        },
+        enabled: true,
+      });
     }
 
-    // 等待所有工作进程退出后，主进程退出
-    setTimeout(() => {
-      logger.info('All workers shut down, exiting master process');
-      process.exit(0);
-    }, 5000);
-  };
+    // 为每个 CPU 核心创建一个工作进程
+    for (let i = 0; i < numCPUs; i++) {
+      const worker = cluster.fork();
+      logger.info(`Forked worker ${worker.process.pid} (${i + 1}/${numCPUs})`);
+    }
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    // 监听工作进程上线事件
+    cluster.on('online', (worker) => {
+      logger.info(`Worker ${worker.process.pid} is online and ready`);
+    });
 
-  logger.info('========================================');
-  logger.info('Multi-process cluster initialized');
-  logger.info(`Master process: ${process.pid}`);
-  logger.info(`Worker processes: ${numCPUs}`);
-  logger.info('Load balancing: Round-robin (OS-level)');
-  logger.info('========================================\n');
+    // 监听工作进程退出事件，自动重启崩溃的工作进程
+    cluster.on('exit', (worker, code, signal) => {
+      if (signal) {
+        logger.warn(
+          `Worker ${worker.process.pid} was killed by signal: ${signal}`,
+        );
+      } else if (code !== 0) {
+        logger.error(
+          `Worker ${worker.process.pid} exited with error code: ${code}`,
+        );
+      } else {
+        logger.info(`Worker ${worker.process.pid} exited normally`);
+      }
+
+      // 如果工作进程异常退出，自动重启一个新的工作进程
+      if (code !== 0 || signal) {
+        logger.info('Starting a new worker to replace the crashed one...');
+        // const newWorker = cluster.fork();
+        // logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
+      }
+    });
+
+    // 优雅关闭：接收到退出信号时，关闭所有工作进程
+    const gracefulShutdown = (signal: string) => {
+      logger.info(
+        `Master ${process.pid} received ${signal}, shutting down workers...`,
+      );
+
+      for (const id in cluster.workers) {
+        const worker = cluster.workers[id];
+        if (worker) {
+          logger.info(`Shutting down worker ${worker.process.pid}`);
+          worker.kill();
+        }
+      }
+
+      // 等待所有工作进程退出后，主进程退出
+      setTimeout(() => {
+        logger.info('All workers shut down, exiting master process');
+        process.exit(0);
+      }, 5000);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    logger.info('========================================');
+    logger.info('Multi-process cluster initialized');
+    logger.info(`Master process: ${process.pid}`);
+    logger.info(`Worker processes: ${numCPUs}`);
+    logger.info('Load balancing: Round-robin (OS-level)');
+    logger.info('========================================\n');
+  } catch (error) {
+    logger.error(
+      `Master ${process.pid} failed to initialize:`,
+      error instanceof Error ? error.message : String(error),
+    );
+    console.error(
+      `Master ${process.pid} failed:`,
+      error instanceof Error ? error.message : String(error),
+    );
+    process.exit(1);
+  }
 }
 
 /**
@@ -147,7 +183,7 @@ async function main(): Promise<void> {
 
   if (cluster.isPrimary) {
     // 主进程：负责管理工作进程和负载均衡
-    startMaster();
+    await startMaster(configPath);
   } else {
     // 工作进程：启动服务器
     await startWorker(configPath);
