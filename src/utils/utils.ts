@@ -1,5 +1,43 @@
 import type { ParsedAddress } from '../config/types';
 
+/**
+ * 检查目标域名是否匹配域名黑名单
+ * @param targetHost - 目标域名
+ * @param blacklist - 域名黑名单数组
+ * @returns 是否匹配
+ */
+export function isDomainInBlacklist(
+  targetHost: string,
+  blacklist: string[],
+): boolean {
+  return blacklist.some((blacklistedDomain) => {
+    // 去除首尾空格
+    const normalizedBlacklisted = blacklistedDomain.trim().toLowerCase();
+    const normalizedTarget = targetHost.trim().toLowerCase();
+
+    // 精确匹配
+    if (normalizedBlacklisted === normalizedTarget) {
+      return true;
+    }
+
+    // 通配符匹配（如 *.example.com 匹配 sub.example.com）
+    if (normalizedBlacklisted.startsWith('*.')) {
+      const domainSuffix = normalizedBlacklisted.slice(2);
+      return (
+        normalizedTarget === domainSuffix ||
+        normalizedTarget.endsWith(`.${domainSuffix}`)
+      );
+    }
+
+    // 字符串包含匹配（如 rua 匹配 rua.plus）
+    if (normalizedTarget.includes(normalizedBlacklisted)) {
+      return true;
+    }
+
+    return false;
+  });
+}
+
 // Global request counter for generating unique request IDs
 let requestCounter = 0;
 

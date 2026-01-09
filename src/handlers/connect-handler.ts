@@ -1,10 +1,10 @@
 import type * as http from 'node:http';
-import type * as net from 'node:net';
+import * as net from 'node:net';
 import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
-import { formatBytes, generateRequestId } from '../utils/utils';
+import { formatBytes, generateRequestId, isDomainInBlacklist } from '../utils/utils';
 
 /**
  * Safely write to a socket, handling potential errors gracefully
@@ -133,33 +133,45 @@ export async function handleConnect(
   }
 
   try {
-    logger.info(
-      `[HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
-        socksAddr.host
-      }:${socksAddr.port}...`,
-    );
+    // 检查目标域名是否在黑名单中
+    const domainBlacklist = await statsCollector.getDomainBlacklist();
+    let targetSocket: net.Socket;
 
-    // Establish connection to target through SOCKS5 proxy
-    const socksConnection = await SocksClient.createConnection({
-      proxy: {
-        host: socksAddr.host,
-        port: socksAddr.port,
-        type: 5, // SOCKS5 protocol
-      },
-      command: 'connect',
-      destination: {
-        host: hostname,
-        port: targetPort,
-      },
-    });
-
-    const { socket: socksSocket } = socksConnection;
-    logger.info(
-      `[HTTPS] [${requestId}] SOCKS5 connection established successfully`,
-    );
+    if (isDomainInBlacklist(hostname, domainBlacklist.blacklist)) {
+      logger.warn(`[HTTPS] [${requestId}] Target domain ${hostname} is in blacklist, connecting directly`);
+      // 直接连接目标服务器，不通过 SOCKS 代理
+      targetSocket = await new Promise((resolve, reject) => {
+        const socket = net.createConnection(targetPort, hostname);
+        socket.on('connect', () => resolve(socket));
+        socket.on('error', (err) => reject(err));
+      });
+    } else {
+      logger.info(
+        `[HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
+          socksAddr.host
+        }:${socksAddr.port}...`,
+      );
+      // 通过 SOCKS 代理连接目标服务器
+      const socksConnection = await SocksClient.createConnection({
+        proxy: {
+          host: socksAddr.host,
+          port: socksAddr.port,
+          type: 5, // SOCKS5 protocol
+        },
+        command: 'connect',
+        destination: {
+          host: hostname,
+          port: targetPort,
+        },
+      });
+      targetSocket = socksConnection.socket;
+      logger.info(
+        `[HTTPS] [${requestId}] SOCKS5 connection established successfully`,
+      );
+    }
 
     // Set socket timeout to prevent hanging connections
-    socksSocket.setTimeout(60000);
+    targetSocket.setTimeout(60000);
     clientSocket.setTimeout(60000);
 
     // Notify client that tunnel is established
@@ -174,7 +186,7 @@ export async function handleConnect(
 
     // Forward any initial data from CONNECT request
     if (head.length > 0) {
-      socksSocket.write(head);
+      targetSocket.write(head);
       bytesFromClient += head.length;
       statsCollector.addBytesUp(requestId, head.length);
     }
@@ -185,17 +197,17 @@ export async function handleConnect(
       statsCollector.addBytesUp(requestId, chunk.length);
     });
 
-    socksSocket.on('data', (chunk) => {
+    targetSocket.on('data', (chunk) => {
       bytesToClient += chunk.length;
       statsCollector.addBytesDown(requestId, chunk.length);
     });
 
     // Set up bidirectional data piping between client and SOCKS5 proxy
-    socksSocket.pipe(clientSocket);
-    clientSocket.pipe(socksSocket);
+    targetSocket.pipe(clientSocket);
+    clientSocket.pipe(targetSocket);
 
     // Handle socket errors gracefully
-    socksSocket.on('error', (err) => {
+    targetSocket.on('error', (err) => {
       const duration = Date.now() - startTime;
       logger.error(`[HTTPS] [${requestId}] SOCKS socket error: ${err.message}`);
       logger.error(
@@ -224,10 +236,10 @@ export async function handleConnect(
         status: 'error',
         errorMessage: err.message,
       });
-      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(targetSocket, requestId);
     });
 
-    socksSocket.on('timeout', () => {
+    targetSocket.on('timeout', () => {
       const duration = Date.now() - startTime;
       logger.error(
         `[HTTPS] [${requestId}] SOCKS socket timeout after ${duration}ms`,
@@ -241,7 +253,7 @@ export async function handleConnect(
         status: 'timeout',
         errorMessage: `Socket timeout after ${duration}ms`,
       });
-      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(targetSocket, requestId);
       safeSocketDestroy(clientSocket, requestId);
     });
 
@@ -259,12 +271,12 @@ export async function handleConnect(
         status: 'timeout',
         errorMessage: `Client timeout after ${duration}ms`,
       });
-      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(targetSocket, requestId);
       safeSocketDestroy(clientSocket, requestId);
     });
 
     // Clean up when either side closes
-    socksSocket.on('close', () => {
+    targetSocket.on('close', () => {
       const duration = Date.now() - startTime;
       logger.info(`[HTTPS] [${requestId}] SOCKS socket closed`);
       logger.info(`[HTTPS] [${requestId}] Duration: ${duration}ms`);
@@ -288,7 +300,7 @@ export async function handleConnect(
         `[HTTPS] [${requestId}] Client socket closed (duration: ${duration}ms)`,
       );
       statsCollector.endConnection(requestId, { status: 'success' });
-      safeSocketDestroy(socksSocket, requestId);
+      safeSocketDestroy(targetSocket, requestId);
     });
   } catch (error) {
     const duration = Date.now() - startTime;
