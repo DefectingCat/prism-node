@@ -198,23 +198,19 @@ export class StatsCollector {
 
   /**
    * 获取域名黑名单配置
-   * @param options 查询选项，包含分页参数
-   * @returns 域名黑名单列表及分页信息
+   * @returns 域名黑名单列表
    */
-  async getDomainBlacklist(
-    options: { page?: number; pageSize?: number } = {},
-  ): Promise<{
+  async getDomainBlacklist(): Promise<{
     total: number;
     blacklist: Array<string>;
-    pagination?: {
-      page: number;
-      pageSize: number;
-      total: number;
-      totalPages: number;
-    };
   }> {
     try {
-      return await database.getDomainBlacklistPaginated(options);
+      const domainBlacklistEntries = await database.getDomainBlacklist();
+      const blacklist = domainBlacklistEntries.map(entry => entry.domain);
+      return {
+        total: blacklist.length,
+        blacklist,
+      };
     } catch (error) {
       logger.error('[STATS] Failed to get domain blacklist:', error);
       throw error;

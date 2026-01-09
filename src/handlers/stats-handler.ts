@@ -156,24 +156,7 @@ export class StatsHandler {
    */
   async getDomainBlacklist(c: Context) {
     try {
-      // Define Zod schema for query parameters
-      const domainBlacklistQuerySchema = z.object({
-        page: z.coerce.number().min(1).optional(),
-        pageSize: z.coerce.number().min(1).max(1000).optional(),
-      });
-
-      // Validate query parameters
-      const validatedQuery = domainBlacklistQuerySchema.parse(c.req.query());
-
-      const options: {
-        page?: number;
-        pageSize?: number;
-      } = {
-        page: validatedQuery.page,
-        pageSize: validatedQuery.pageSize,
-      };
-
-      const blacklist = await statsCollector.getDomainBlacklist(options);
+      const blacklist = await statsCollector.getDomainBlacklist();
 
       return c.json({
         success: true,
