@@ -18,17 +18,25 @@ export class StatsCollector {
     }
   >();
 
+  private enableDatabase: boolean = false;
+
   /**
    * Initialize stats collector
    * @param config Application configuration containing PostgreSQL settings
    */
   async initialize(config: Config): Promise<void> {
-    try {
-      await database.initialize(config.postgres);
-      logger.info('Stats collector initialized');
-    } catch (error) {
-      logger.error('Failed to initialize stats collector:', error);
-      throw error;
+    this.enableDatabase = config.enableDatabase ?? false;
+
+    if (this.enableDatabase) {
+      try {
+        await database.initialize(config.postgres);
+        logger.info('Stats collector initialized with database support');
+      } catch (error) {
+        logger.error('Failed to initialize stats collector:', error);
+        throw error;
+      }
+    } else {
+      logger.info('Stats collector initialized without database support');
     }
   }
 
@@ -123,16 +131,25 @@ export class StatsCollector {
       errorMessage: options.errorMessage,
     } as AccessRecord;
 
-    try {
-      await database.insertAccessRecord(record);
+    if (this.enableDatabase) {
+      try {
+        await database.insertAccessRecord(record);
+        logger.debug(
+          `[STATS] Recorded connection ${requestId}: ${record.type} ${record.targetHost}:${record.targetPort} - ${duration}ms, ↑${record.bytesUp} ↓${record.bytesDown} bytes`,
+        );
+      } catch (error) {
+        logger.error(
+          `[STATS] Failed to record connection ${requestId}:`,
+          error,
+        );
+      }
+    } else {
       logger.debug(
-        `[STATS] Recorded connection ${requestId}: ${record.type} ${record.targetHost}:${record.targetPort} - ${duration}ms, ↑${record.bytesUp} ↓${record.bytesDown} bytes`,
+        `[STATS] Connection ${requestId}: ${record.type} ${record.targetHost}:${record.targetPort} - ${duration}ms, ↑${record.bytesUp} ↓${record.bytesDown} bytes (not stored in database)`,
       );
-    } catch (error) {
-      logger.error(`[STATS] Failed to record connection ${requestId}:`, error);
-    } finally {
-      this.activeConnections.delete(requestId);
     }
+
+    this.activeConnections.delete(requestId);
   }
 
   /**
@@ -150,11 +167,29 @@ export class StatsCollector {
       pageSize?: number;
     } = {},
   ) {
-    try {
-      return await database.getStats(options);
-    } catch (error) {
-      logger.error('[STATS] Failed to get stats:', error);
-      throw error;
+    if (this.enableDatabase) {
+      try {
+        return await database.getStats(options);
+      } catch (error) {
+        logger.error('[STATS] Failed to get stats:', error);
+        throw error;
+      }
+    } else {
+      // 返回空的统计数据
+      return {
+        totalRequests: 0,
+        totalBytesUp: 0,
+        totalBytesDown: 0,
+        avgDuration: 0,
+        topHosts: [],
+        records: [],
+        pagination: {
+          page: options.page || 1,
+          pageSize: options.pageSize || 10,
+          total: 0,
+          totalPages: 0,
+        },
+      };
     }
   }
 
@@ -204,16 +239,24 @@ export class StatsCollector {
     total: number;
     blacklist: Array<string>;
   }> {
-    try {
-      const domainBlacklistEntries = await database.getDomainBlacklist();
-      const blacklist = domainBlacklistEntries.map(entry => entry.domain);
+    if (this.enableDatabase) {
+      try {
+        const domainBlacklistEntries = await database.getDomainBlacklist();
+        const blacklist = domainBlacklistEntries.map((entry) => entry.domain);
+        return {
+          total: blacklist.length,
+          blacklist,
+        };
+      } catch (error) {
+        logger.error('[STATS] Failed to get domain blacklist:', error);
+        throw error;
+      }
+    } else {
+      // 返回空的黑名单
       return {
-        total: blacklist.length,
-        blacklist,
+        total: 0,
+        blacklist: [],
       };
-    } catch (error) {
-      logger.error('[STATS] Failed to get domain blacklist:', error);
-      throw error;
     }
   }
 
@@ -224,12 +267,18 @@ export class StatsCollector {
    * @returns A promise that resolves when the blacklist is updated
    */
   async editDomainBlacklist(domains: string[]): Promise<void> {
-    try {
-      await database.editDomainBlacklist(domains);
-      logger.info('Domain blacklist updated successfully.');
-    } catch (error) {
-      logger.error('[STATS] Failed to edit domain blacklist:', error);
-      throw error;
+    if (this.enableDatabase) {
+      try {
+        await database.editDomainBlacklist(domains);
+        logger.info('Domain blacklist updated successfully.');
+      } catch (error) {
+        logger.error('[STATS] Failed to edit domain blacklist:', error);
+        throw error;
+      }
+    } else {
+      logger.warn(
+        'Domain blacklist editing disabled (database functionality is off)',
+      );
     }
   }
 
@@ -248,7 +297,11 @@ export class StatsCollector {
     );
 
     await Promise.allSettled(promises);
-    await database.close();
+
+    if (this.enableDatabase) {
+      await database.close();
+    }
+
     logger.info('Stats collector closed');
   }
 }

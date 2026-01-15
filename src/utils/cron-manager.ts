@@ -1,4 +1,4 @@
-import cron, { ScheduledTask, TaskOptions, TaskContext } from 'node-cron';
+import cron, { ScheduledTask, TaskContext, TaskOptions } from 'node-cron';
 import logger from './logger';
 
 /**
@@ -66,7 +66,9 @@ class CronManager {
             logger.error(`停止定时任务 "${name}" 失败: ${error}`);
           });
         }
-        logger.info(`定时任务 "${name}" 已创建（未启用），执行周期: ${schedule}`);
+        logger.info(
+          `定时任务 "${name}" 已创建（未启用），执行周期: ${schedule}`,
+        );
       } else {
         logger.info(`定时任务 "${name}" 已启用，执行周期: ${schedule}`);
       }
@@ -122,12 +124,14 @@ class CronManager {
    * 获取所有定时任务信息
    * @returns 任务信息数组
    */
-  static async getTasksInfo(): Promise<Array<{
-    name: string;
-    id: string;
-    status: string;
-    nextRun: Date | null;
-  }>> {
+  static async getTasksInfo(): Promise<
+    Array<{
+      name: string;
+      id: string;
+      status: string;
+      nextRun: Date | null;
+    }>
+  > {
     return Promise.all(
       Array.from(tasks.entries()).map(async ([name, task]) => {
         const status = await task.getStatus();

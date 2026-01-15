@@ -30,9 +30,9 @@ export function isDomainInBlacklist(
     }
 
     // 字符串包含匹配（如 rua 匹配 rua.plus）
-    if (normalizedTarget.includes(normalizedBlacklisted)) {
-      return true;
-    }
+    // if (normalizedTarget.includes(normalizedBlacklisted)) {
+    //   return true;
+    // }
 
     return false;
   });
