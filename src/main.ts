@@ -6,9 +6,9 @@ import { hideBin } from 'yargs/helpers';
 import { loadConfig } from './config/config';
 import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
-import { configureLogger, logger } from './utils/logger';
 import CronManager from './utils/cron-manager';
 import { database } from './utils/database';
+import { configureLogger, logger } from './utils/logger';
 
 /**
  * 工作进程入口 - 启动代理服务器和 HTTP 服务器

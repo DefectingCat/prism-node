@@ -156,7 +156,10 @@ class Database {
    * @returns ID of inserted record
    */
   async insertAccessRecord(record: AccessRecord): Promise<number> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping insertAccessRecord');
+      return -1; // 返回无效ID表示未插入
+    }
 
     const sql = `
       INSERT INTO access_logs (
@@ -219,7 +222,23 @@ class Database {
       totalPages: number;
     };
   }> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, returning empty stats');
+      return {
+        totalRequests: 0,
+        totalBytesUp: 0,
+        totalBytesDown: 0,
+        avgDuration: 0,
+        topHosts: [],
+        records: [],
+        pagination: {
+          page: options.page || 1,
+          pageSize: options.pageSize || 10,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
 
     // Build query conditions
     let whereClause = 'WHERE 1=1';
@@ -383,7 +402,10 @@ class Database {
   async insertDomainBlacklist(
     domainBlacklist: DomainBlacklist,
   ): Promise<number | null> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping insertDomainBlacklist');
+      return null;
+    }
 
     const sql = `
       INSERT INTO domain_blacklist (domain, comment)
@@ -420,7 +442,19 @@ class Database {
       totalPages: number;
     };
   }> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, returning empty blacklist');
+      return {
+        total: 0,
+        blacklist: [],
+        pagination: {
+          page: options.page || 1,
+          pageSize: options.pageSize || 10,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
 
     // Get total record count
     const countSQL = 'SELECT COUNT(*) as total FROM domain_blacklist';
@@ -472,7 +506,10 @@ class Database {
    * @returns A promise that resolves to an array of all DomainBlacklist objects.
    */
   async getDomainBlacklist(): Promise<DomainBlacklist[]> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, returning empty blacklist');
+      return [];
+    }
 
     try {
       const sql =
@@ -505,7 +542,10 @@ class Database {
    * @returns A promise that resolves when the blacklist is updated.
    */
   async editDomainBlacklist(domains: string[]): Promise<void> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping editDomainBlacklist');
+      return;
+    }
 
     try {
       // Start a transaction
@@ -536,7 +576,10 @@ class Database {
    * @returns Number of rows deleted
    */
   async deleteDomainBlacklist(id: number): Promise<number> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping deleteDomainBlacklist');
+      return 0;
+    }
 
     const sql = 'DELETE FROM domain_blacklist WHERE id = $1';
     const params = [id];
@@ -556,7 +599,10 @@ class Database {
    * @returns True if domain is in blacklist, false otherwise
    */
   async isDomainBlacklisted(domain: string): Promise<boolean> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, domain blacklist check skipped');
+      return false; // 默认不阻止任何域名
+    }
 
     const sql =
       'SELECT COUNT(*) as count FROM domain_blacklist WHERE domain = $1';
@@ -577,7 +623,10 @@ class Database {
    * @returns ID of inserted user record
    */
   async insertUser(user: User): Promise<number | null> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping insertUser');
+      return null;
+    }
 
     const sql = `
       INSERT INTO users (username, email, password)
@@ -603,7 +652,10 @@ class Database {
    * @returns User object if found, null otherwise
    */
   async getUserById(id: number): Promise<User | null> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping getUserById');
+      return null;
+    }
 
     const sql =
       'SELECT id, username, email, created_at FROM users WHERE id = $1';
@@ -634,7 +686,10 @@ class Database {
    * @returns User object if found, null otherwise
    */
   async getUserByUsername(username: string): Promise<User | null> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping getUserByUsername');
+      return null;
+    }
 
     const sql =
       'SELECT id, username, email, password, created_at FROM users WHERE username = $1';
@@ -665,7 +720,10 @@ class Database {
    * @returns User object if found, null otherwise
    */
   async getUserByEmail(email: string): Promise<User | null> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping getUserByEmail');
+      return null;
+    }
 
     const sql =
       'SELECT id, username, email, password, created_at FROM users WHERE email = $1';
@@ -697,7 +755,10 @@ class Database {
    * @returns Number of rows updated
    */
   async updateUser(id: number, user: Partial<User>): Promise<number> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping updateUser');
+      return 0;
+    }
 
     // Build update query dynamically based on provided fields
     let updateClause = '';
@@ -744,7 +805,10 @@ class Database {
    * @returns Number of rows deleted
    */
   async deleteUser(id: number): Promise<number> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping deleteUser');
+      return 0;
+    }
 
     const sql = 'DELETE FROM users WHERE id = $1';
     const params = [id];
@@ -763,7 +827,10 @@ class Database {
    * @returns Number of rows deleted (always 0 for TRUNCATE)
    */
   async truncateAccessLogs(): Promise<void> {
-    if (!this.pool) throw new Error('Database not initialized');
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping truncateAccessLogs');
+      return;
+    }
 
     const sql = 'TRUNCATE TABLE access_logs RESTART IDENTITY';
 

@@ -24,11 +24,15 @@
     "pool": {
       "max": 10,
       "idleTimeoutMillis": 30000,
-      "connectionTimeoutMillis": 2000,
-    },
+      "connectionTimeoutMillis": 2000
+    }
   },
 
   // Node-cron 定时任务配置（可选）
   // 格式：Cron 表达式，例如 "0 0 * * 0" 表示每周日0点执行一次
-  "cron": "0 0 * * 0"
+  "cron": "0 0 * * 0",
+
+  // 是否启用数据库功能（可选，默认为 false）
+  // 当设置为 false 时，所有数据库相关功能将被禁用，包括统计数据存储和查询
+  "enableDatabase": false
 }

@@ -4,7 +4,11 @@ import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
 import { statsCollector } from '../utils/stats-collector';
-import { formatBytes, generateRequestId, isDomainInBlacklist } from '../utils/utils';
+import {
+  formatBytes,
+  generateRequestId,
+  isDomainInBlacklist,
+} from '../utils/utils';
 
 /**
  * Safely write to a socket, handling potential errors gracefully
@@ -115,7 +119,9 @@ export async function handleHttpRequest(
     let targetSocket: net.Socket;
 
     if (isDomainInBlacklist(targetHost, domainBlacklist.blacklist)) {
-      logger.warn(`[HTTP] [${requestId}] Target domain ${targetHost} is in blacklist, connecting directly`);
+      logger.warn(
+        `[HTTP] [${requestId}] Target domain ${targetHost} is in blacklist, connecting directly`,
+      );
       // 直接连接目标服务器，不通过 SOCKS 代理
       targetSocket = await new Promise((resolve, reject) => {
         const socket = net.createConnection(targetPort, targetHost);

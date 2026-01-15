@@ -25,6 +25,7 @@ export interface Config {
   log_path?: string; // Log file path (empty string means no log file)
   postgres: PostgresConfig; // PostgreSQL database configuration
   cron?: string; // Node-cron schedule expression (e.g., "0 * * * *" for every hour)
+  enableDatabase?: boolean; // Whether to enable database functionality (default: false)
 }
 
 /**
