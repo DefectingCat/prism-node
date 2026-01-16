@@ -34,5 +34,10 @@
 
   // 是否启用数据库功能（可选，默认为 false）
   // 当设置为 false 时，所有数据库相关功能将被禁用，包括统计数据存储和查询
-  "enableDatabase": false
+  "enableDatabase": false,
+
+  // 域名白名单配置（可选）
+  // 匹配到白名单中的域名时，将直接连接目标服务器，不通过 SOCKS 代理
+  // 支持精确匹配和通配符匹配（如 *.example.com 匹配 sub.example.com）
+  "whitelist": ["example.com", "*.google.com", "localhost"]
 }
