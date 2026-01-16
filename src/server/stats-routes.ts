@@ -30,6 +30,11 @@ export const blocklistsRoutes = new Hono()
   .get('/', statsHandler.getDomainBlacklist)
   .post('/', statsHandler.editDomainBlacklist);
 
+// Domain Whitelist Routes - /api/allowlists
+export const allowlistsRoutes = new Hono()
+  .get('/', statsHandler.getDomainWhitelist)
+  .post('/', statsHandler.editDomainWhitelist);
+
 /**
  * Creates and configures statistics API routes for the proxy server
  *
@@ -50,6 +55,7 @@ export function createStatsRoutes() {
   app.route('/about', aboutRoute);
   app.route('/logs/stream', logsStreamRoute);
   app.route('/blocklists', blocklistsRoutes);
+  app.route('/allowlists', allowlistsRoutes);
   app.route('/users', usersRoutes);
 
   return app;

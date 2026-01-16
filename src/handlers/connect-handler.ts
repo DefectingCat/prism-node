@@ -8,6 +8,7 @@ import {
   formatBytes,
   generateRequestId,
   isDomainInBlacklist,
+  isDomainInWhitelist,
 } from '../utils/utils';
 
 /**
@@ -137,13 +138,13 @@ export async function handleConnect(
   }
 
   try {
-    // 检查目标域名是否在黑名单中
-    const domainBlacklist = await statsCollector.getDomainBlacklist();
+    // 检查目标域名是否在白名单中
+    const domainWhitelist = await statsCollector.getDomainWhitelist();
     let targetSocket: net.Socket;
 
-    if (isDomainInBlacklist(hostname, domainBlacklist.blacklist)) {
+    if (isDomainInWhitelist(hostname, domainWhitelist.whitelist)) {
       logger.warn(
-        `[HTTPS] [${requestId}] Target domain ${hostname} is in blacklist, connecting directly`,
+        `[HTTPS] [${requestId}] Target domain ${hostname} is in whitelist, connecting directly`,
       );
       // 直接连接目标服务器，不通过 SOCKS 代理
       targetSocket = await new Promise((resolve, reject) => {
@@ -152,28 +153,43 @@ export async function handleConnect(
         socket.on('error', (err) => reject(err));
       });
     } else {
-      logger.info(
-        `[HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
-          socksAddr.host
-        }:${socksAddr.port}...`,
-      );
-      // 通过 SOCKS 代理连接目标服务器
-      const socksConnection = await SocksClient.createConnection({
-        proxy: {
-          host: socksAddr.host,
-          port: socksAddr.port,
-          type: 5, // SOCKS5 protocol
-        },
-        command: 'connect',
-        destination: {
-          host: hostname,
-          port: targetPort,
-        },
-      });
-      targetSocket = socksConnection.socket;
-      logger.info(
-        `[HTTPS] [${requestId}] SOCKS5 connection established successfully`,
-      );
+      // 检查目标域名是否在黑名单中
+      const domainBlacklist = await statsCollector.getDomainBlacklist();
+
+      if (isDomainInBlacklist(hostname, domainBlacklist.blacklist)) {
+        logger.warn(
+          `[HTTPS] [${requestId}] Target domain ${hostname} is in blacklist, connecting directly`,
+        );
+        // 直接连接目标服务器，不通过 SOCKS 代理
+        targetSocket = await new Promise((resolve, reject) => {
+          const socket = net.createConnection(targetPort, hostname);
+          socket.on('connect', () => resolve(socket));
+          socket.on('error', (err) => reject(err));
+        });
+      } else {
+        logger.info(
+          `[HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
+            socksAddr.host
+          }:${socksAddr.port}...`,
+        );
+        // 通过 SOCKS 代理连接目标服务器
+        const socksConnection = await SocksClient.createConnection({
+          proxy: {
+            host: socksAddr.host,
+            port: socksAddr.port,
+            type: 5, // SOCKS5 protocol
+          },
+          command: 'connect',
+          destination: {
+            host: hostname,
+            port: targetPort,
+          },
+        });
+        targetSocket = socksConnection.socket;
+        logger.info(
+          `[HTTPS] [${requestId}] SOCKS5 connection established successfully`,
+        );
+      }
     }
 
     // Set socket timeout to prevent hanging connections

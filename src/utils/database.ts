@@ -33,6 +33,16 @@ export interface DomainBlacklist {
 }
 
 /**
+ * 域名白名单配置接口
+ */
+export interface DomainWhitelist {
+  id?: number; // 数据库自增ID
+  domain: string; // 域名
+  comment?: string; // 备注
+  createdAt?: Date; // 创建时间
+}
+
+/**
  * 用户信息接口
  */
 export interface User {
@@ -113,6 +123,13 @@ class Database {
       );
 
       CREATE TABLE IF NOT EXISTS domain_blacklist (
+        id SERIAL PRIMARY KEY,
+        domain TEXT NOT NULL UNIQUE,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS domain_whitelist (
         id SERIAL PRIMARY KEY,
         domain TEXT NOT NULL UNIQUE,
         comment TEXT,
@@ -613,6 +630,154 @@ class Database {
       return Number(result.rows[0].count) > 0;
     } catch (error) {
       logger.error('Failed to check if domain is blacklisted:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Insert a domain into the whitelist
+   * @param domainWhitelist Domain whitelist object
+   * @returns ID of inserted record
+   */
+  async insertDomainWhitelist(
+    domainWhitelist: DomainWhitelist,
+  ): Promise<number | null> {
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping insertDomainWhitelist');
+      return null;
+    }
+
+    const sql = `
+      INSERT INTO domain_whitelist (domain, comment)
+      VALUES ($1, $2)
+      ON CONFLICT (domain) DO NOTHING
+      RETURNING id
+    `;
+
+    const params = [domainWhitelist.domain, domainWhitelist.comment || null];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rows[0]?.id || null; // Return null if no row was inserted (due to conflict)
+    } catch (error) {
+      logger.error('Failed to insert domain into whitelist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves all domain whitelist entries from the database.
+   *
+   * @returns A promise that resolves to an array of all DomainWhitelist objects.
+   */
+  async getDomainWhitelist(): Promise<DomainWhitelist[]> {
+    if (!this.pool) {
+      logger.debug('Database not initialized, returning empty whitelist');
+      return [];
+    }
+
+    try {
+      const sql =
+        'SELECT id, domain, comment, created_at FROM domain_whitelist ORDER BY created_at DESC';
+      const result: QueryResult = await this.pool.query(sql);
+      return result.rows.map(
+        (entry: {
+          id: number;
+          domain: string;
+          comment?: string;
+          created_at: Date;
+        }) => ({
+          id: Number(entry.id),
+          domain: String(entry.domain),
+          comment: entry.comment ? String(entry.comment) : undefined,
+          createdAt: entry.created_at,
+        }),
+      );
+    } catch (error) {
+      logger.error('Failed to get all domain whitelist entries:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Edits the domain whitelist by replacing all existing entries with a new set of domains.
+   * This operation is performed within a transaction.
+   *
+   * @param domains - An array of domain strings to set as the new whitelist.
+   * @returns A promise that resolves when the whitelist is updated.
+   */
+  async editDomainWhitelist(domains: string[]): Promise<void> {
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping editDomainWhitelist');
+      return;
+    }
+
+    try {
+      // Start a transaction
+      await this.pool.query('BEGIN');
+
+      // Clear existing whitelist
+      await this.pool.query('TRUNCATE TABLE domain_whitelist RESTART IDENTITY');
+
+      // Insert new domains
+      for (const domain of domains) {
+        await this.insertDomainWhitelist({ domain });
+      }
+
+      // Commit the transaction
+      await this.pool.query('COMMIT');
+      logger.info('Domain whitelist updated successfully in database.');
+    } catch (error) {
+      // Rollback on error
+      await this.pool.query('ROLLBACK');
+      logger.error('Failed to edit domain whitelist in database:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a domain from the whitelist by ID
+   * @param id ID of the domain whitelist entry
+   * @returns Number of rows deleted
+   */
+  async deleteDomainWhitelist(id: number): Promise<number> {
+    if (!this.pool) {
+      logger.debug('Database not initialized, skipping deleteDomainWhitelist');
+      return 0;
+    }
+
+    const sql = 'DELETE FROM domain_whitelist WHERE id = $1';
+    const params = [id];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return result.rowCount || 0;
+    } catch (error) {
+      logger.error('Failed to delete domain from whitelist:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a domain is in the whitelist
+   * @param domain Domain to check
+   * @returns True if domain is in whitelist, false otherwise
+   */
+  async isDomainWhitelisted(domain: string): Promise<boolean> {
+    if (!this.pool) {
+      logger.debug('Database not initialized, domain whitelist check skipped');
+      return false; // 默认不允许任何域名直接访问
+    }
+
+    const sql =
+      'SELECT COUNT(*) as count FROM domain_whitelist WHERE domain = $1';
+    const params = [domain];
+
+    try {
+      const result: QueryResult = await this.pool.query(sql, params);
+      return Number(result.rows[0].count) > 0;
+    } catch (error) {
+      logger.error('Failed to check if domain is whitelisted:', error);
       throw error;
     }
   }

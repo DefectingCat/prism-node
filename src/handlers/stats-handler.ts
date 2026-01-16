@@ -227,6 +227,90 @@ export class StatsHandler {
       );
     }
   }
+
+  /**
+   * Retrieves the domain whitelist configuration
+   *
+   * Query parameters:
+   * - page: Page number for pagination
+   * - pageSize: Records per page
+   *
+   * @param c - Hono context object
+   * @returns JSON response with domain whitelist and pagination information
+   */
+  async getDomainWhitelist(c: Context) {
+    try {
+      const whitelist = await statsCollector.getDomainWhitelist();
+
+      return c.json({
+        success: true,
+        data: whitelist,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的查询参数',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
+      logger.error('获取域名白名单失败:', error);
+      return c.json(
+        {
+          success: false,
+          error: '获取域名白名单失败',
+        },
+        500,
+      );
+    }
+  }
+
+  /**
+   * Edits the domain whitelist configuration
+   *
+   * @param c - Hono context object
+   * @returns JSON response indicating success or failure
+   */
+  async editDomainWhitelist(c: Context) {
+    try {
+      // Define Zod schema for request body
+      const editDomainWhitelistSchema = z.object({
+        domains: z.array(z.string()),
+      });
+
+      // Validate request body
+      const { domains } = editDomainWhitelistSchema.parse(await c.req.json());
+
+      await statsCollector.editDomainWhitelist(domains);
+
+      return c.json({
+        success: true,
+        message: 'Domain whitelist updated successfully.',
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return c.json(
+          {
+            success: false,
+            error: '无效的请求体',
+            details: error.issues.map((issue) => issue.message),
+          },
+          400,
+        );
+      }
+      logger.error('编辑域名白名单失败:', error);
+      return c.json(
+        {
+          success: false,
+          error: '编辑域名白名单失败',
+        },
+        500,
+      );
+    }
+  }
 }
 
 export const statsHandler = new StatsHandler();
