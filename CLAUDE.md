@@ -54,10 +54,10 @@ pnpm run fix
 pnpm run format
 
 # Lint check
-pnpm run lint
+pnpm run lint:check
 
 # Lint and fix
-pnpm run lint:check
+pnpm run lint
 ```
 
 ## Project Structure
@@ -84,15 +84,20 @@ prism-node/
 │       ├── logger.ts        # Winston logger
 │       ├── stats-collector.ts # Statistics collector
 │       ├── database.ts      # PostgreSQL connection
+│       ├── cron-manager.ts  # Node-cron scheduler
 │       └── utils.ts         # Helper functions
 ├── frontend/                # React frontend
 │   ├── src/
 │   │   ├── components/      # Reusable components
-│   │   ├── pages/          # Page components
+│   │   ├── pages/          # Page components (Home, Stats, Logs, etc.)
 │   │   ├── i18n/           # Internationalization (zh/en)
 │   │   └── utils/          # Frontend utilities
 │   └── package.json
 ├── scripts/                 # Build and test scripts
+│   ├── build.mjs           # Complete build process
+│   └── test-websocket.mjs  # WebSocket testing
+├── benches/                # Performance benchmarks
+│   └── api-stress-test.mjs # API stress testing
 └── config.example.json      # Configuration template
 ```
 
@@ -101,19 +106,23 @@ prism-node/
 ### Backend Stack
 - **Hono**: High-performance HTTP server with middleware support
 - **Node.js Cluster**: Multi-process load balancing
-- **PostgreSQL**: Statistics data storage
+- **PostgreSQL**: Statistics data storage (optional)
 - **Winston**: Logging system with daily rotation
 - **WebSocket (ws)**: Real-time log streaming
 - **SOCKS**: SOCKS5 proxy client
 - **bcryptjs**: Password hashing
+- **node-cron**: Scheduled tasks
 
 ### Frontend Stack
 - **React 19**: Modern UI framework
 - **Material-UI (MUI)**: Component library
 - **MUI X-Charts**: Data visualization
+- **MUI X-Date-Pickers Pro**: Date range picker
 - **SWR**: Data fetching and caching
 - **React Router**: Routing
 - **i18next**: Internationalization
+- **Tailwind CSS**: Utility-first styling
+- **Vite**: Fast build tool
 
 ## Key Features
 
@@ -123,6 +132,8 @@ prism-node/
 - Real-time statistics collection
 - WebSocket-based log streaming
 - Winston logging with file rotation
+- Domain blacklist support
+- Database functionality (optional, default: false)
 
 ### Statistics Dashboard
 - Total requests, traffic, and performance metrics
@@ -131,9 +142,10 @@ prism-node/
 - Traffic distribution (upload/download)
 - Flexible query parameters (time range, host, type)
 - Auto-refresh functionality
+- Active connections monitoring
 
 ### API Endpoints
-- `GET /api/stats` - Statistics data
+- `GET /api/stats` - Statistics data (supports query parameters)
 - `WS /api/logs/stream` - Real-time log streaming
 - `GET /api/about` - Application information
 - User management endpoints (CRUD operations)
@@ -151,7 +163,9 @@ prism-node/
     "database": "prism-node",
     "user": "username",
     "password": "password"
-  }
+  },
+  "cron": "0 * * * *",            // Node-cron schedule (optional)
+  "enableDatabase": false         // Enable/disable database (default: false)
 }
 ```
 
@@ -190,3 +204,46 @@ node scripts/test-websocket.mjs
 - Configure log rotation in `config.json`
 - Adjust PostgreSQL pool settings for high traffic
 - Enable clustering (default behavior) for multi-core systems
+- Database functionality is optional - set `enableDatabase: true` to use it
+
+## Build Process
+
+The build system (`scripts/build.mjs`) handles:
+1. Compiling TypeScript code
+2. Building frontend with Vite
+3. Copying frontend assets to `dist/html`
+4. Copying README files to distribution
+
+## Code Style
+
+- Formatter: Biome (configured in `biome.json`)
+- Indentation: 2 spaces
+- Quote style: Single quotes for JS/TS, double for JSX
+- Trailing commas: Allowed
+- Semicolons: Required
+
+## Main Entry Point
+
+`src/main.ts` uses Node.js Cluster module to:
+1. Start master process that manages worker processes
+2. Fork worker processes for each CPU core
+3. Handle graceful shutdown
+4. Manage cron tasks
+
+## Key Classes and Utilities
+
+### StatsCollector
+- Collects real-time proxy statistics
+- Manages active connections
+- Handles database operations
+- Located at `src/utils/stats-collector.ts`
+
+### Database
+- PostgreSQL connection and query management
+- Stores access logs, domain blacklist, and users
+- Located at `src/utils/database.ts`
+
+### Logger
+- Winston-based logging system
+- Supports file rotation and console output
+- Located at `src/utils/logger.ts`
