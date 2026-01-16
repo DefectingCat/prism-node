@@ -25,11 +25,6 @@ export const logsStreamRoute = new Hono().get('/', (c) => {
 // User Routes - /api/users
 export const usersRoutes = new Hono().post('/create', userHandler.createUser);
 
-// Domain Blacklist Routes - /api/blocklists
-export const blocklistsRoutes = new Hono()
-  .get('/', statsHandler.getDomainBlacklist)
-  .post('/', statsHandler.editDomainBlacklist);
-
 // Domain Whitelist Routes - /api/allowlists
 export const allowlistsRoutes = new Hono()
   .get('/', statsHandler.getDomainWhitelist)
@@ -54,7 +49,6 @@ export function createStatsRoutes() {
   app.route('/stats', statsRoutes);
   app.route('/about', aboutRoute);
   app.route('/logs/stream', logsStreamRoute);
-  app.route('/blocklists', blocklistsRoutes);
   app.route('/allowlists', allowlistsRoutes);
   app.route('/users', usersRoutes);
 

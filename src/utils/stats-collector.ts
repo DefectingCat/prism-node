@@ -232,57 +232,6 @@ export class StatsCollector {
   }
 
   /**
-   * 获取域名黑名单配置
-   * @returns 域名黑名单列表
-   */
-  async getDomainBlacklist(): Promise<{
-    total: number;
-    blacklist: Array<string>;
-  }> {
-    if (this.enableDatabase) {
-      try {
-        const domainBlacklistEntries = await database.getDomainBlacklist();
-        const blacklist = domainBlacklistEntries.map((entry) => entry.domain);
-        return {
-          total: blacklist.length,
-          blacklist,
-        };
-      } catch (error) {
-        logger.error('[STATS] Failed to get domain blacklist:', error);
-        throw error;
-      }
-    } else {
-      // 返回空的黑名单
-      return {
-        total: 0,
-        blacklist: [],
-      };
-    }
-  }
-
-  /**
-   * Edits the domain blacklist configuration
-   *
-   * @param domains - An array of domain strings to set as the new blacklist
-   * @returns A promise that resolves when the blacklist is updated
-   */
-  async editDomainBlacklist(domains: string[]): Promise<void> {
-    if (this.enableDatabase) {
-      try {
-        await database.editDomainBlacklist(domains);
-        logger.info('Domain blacklist updated successfully.');
-      } catch (error) {
-        logger.error('[STATS] Failed to edit domain blacklist:', error);
-        throw error;
-      }
-    } else {
-      logger.warn(
-        'Domain blacklist editing disabled (database functionality is off)',
-      );
-    }
-  }
-
-  /**
    * 获取域名白名单配置
    * @returns 域名白名单列表
    */
