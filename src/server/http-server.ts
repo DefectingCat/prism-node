@@ -167,6 +167,7 @@ export async function startHttpServer(config: Config): Promise<string> {
         fetch: app.fetch,
         port: httpAddr.port,
         hostname: httpAddr.host,
+        reusePort: true, // 启用端口复用，允许多个进程绑定到同一个端口
       },
       () => {
         logger.info('HTTP server started successfully', {
