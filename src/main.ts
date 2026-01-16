@@ -66,7 +66,9 @@ async function startMaster(configPath: string): Promise<void> {
     logger.info(`Creating ${numCPUs} worker processes for load balancing`);
 
     // 初始化数据库连接（主进程需要单独初始化以执行定时任务）
-    await database.initialize(config.postgres);
+    if (config.enableDatabase) {
+      await database.initialize(config.postgres);
+    }
 
     // 检查是否配置了 cron 任务
     if (config.cron) {
