@@ -283,6 +283,57 @@ export class StatsCollector {
   }
 
   /**
+   * 获取域名白名单配置
+   * @returns 域名白名单列表
+   */
+  async getDomainWhitelist(): Promise<{
+    total: number;
+    whitelist: Array<string>;
+  }> {
+    if (this.enableDatabase) {
+      try {
+        const domainWhitelistEntries = await database.getDomainWhitelist();
+        const whitelist = domainWhitelistEntries.map((entry) => entry.domain);
+        return {
+          total: whitelist.length,
+          whitelist,
+        };
+      } catch (error) {
+        logger.error('[STATS] Failed to get domain whitelist:', error);
+        throw error;
+      }
+    } else {
+      // 返回空的白名单
+      return {
+        total: 0,
+        whitelist: [],
+      };
+    }
+  }
+
+  /**
+   * Edits the domain whitelist configuration
+   *
+   * @param domains - An array of domain strings to set as the new whitelist
+   * @returns A promise that resolves when the whitelist is updated
+   */
+  async editDomainWhitelist(domains: string[]): Promise<void> {
+    if (this.enableDatabase) {
+      try {
+        await database.editDomainWhitelist(domains);
+        logger.info('Domain whitelist updated successfully.');
+      } catch (error) {
+        logger.error('[STATS] Failed to edit domain whitelist:', error);
+        throw error;
+      }
+    } else {
+      logger.warn(
+        'Domain whitelist editing disabled (database functionality is off)',
+      );
+    }
+  }
+
+  /**
    * 关闭统计收集器
    * 结束所有活跃连接并关闭数据库
    */

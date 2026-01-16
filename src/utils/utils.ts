@@ -38,6 +38,39 @@ export function isDomainInBlacklist(
   });
 }
 
+/**
+ * 检查目标域名是否匹配域名白名单
+ * @param targetHost - 目标域名
+ * @param whitelist - 域名白名单数组
+ * @returns 是否匹配
+ */
+export function isDomainInWhitelist(
+  targetHost: string,
+  whitelist: string[],
+): boolean {
+  return whitelist.some((whitelistedDomain) => {
+    // 去除首尾空格
+    const normalizedWhitelisted = whitelistedDomain.trim().toLowerCase();
+    const normalizedTarget = targetHost.trim().toLowerCase();
+
+    // 精确匹配
+    if (normalizedWhitelisted === normalizedTarget) {
+      return true;
+    }
+
+    // 通配符匹配（如 *.example.com 匹配 sub.example.com）
+    if (normalizedWhitelisted.startsWith('*.')) {
+      const domainSuffix = normalizedWhitelisted.slice(2);
+      return (
+        normalizedTarget === domainSuffix ||
+        normalizedTarget.endsWith(`.${domainSuffix}`)
+      );
+    }
+
+    return false;
+  });
+}
+
 // Global request counter for generating unique request IDs
 let requestCounter = 0;
 

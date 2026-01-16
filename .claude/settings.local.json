@@ -1,12 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)",
+      "Bash(*)",
       "Bash(cat:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(pnpm run build)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(node:*)",
+      "Bash(pnpm run lint:check)",
+      "Bash(pnpm run format:check:*)"
     ]
   }
 }
