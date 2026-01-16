@@ -19,6 +19,7 @@ export class StatsCollector {
   >();
 
   private enableDatabase: boolean = false;
+  private configWhitelist: string[] = [];
 
   /**
    * Initialize stats collector
@@ -26,6 +27,7 @@ export class StatsCollector {
    */
   async initialize(config: Config): Promise<void> {
     this.enableDatabase = config.enableDatabase ?? false;
+    this.configWhitelist = config.whitelist ?? [];
 
     if (this.enableDatabase) {
       try {
@@ -252,10 +254,10 @@ export class StatsCollector {
         throw error;
       }
     } else {
-      // 返回空的白名单
+      // 返回配置文件中的白名单
       return {
-        total: 0,
-        whitelist: [],
+        total: this.configWhitelist.length,
+        whitelist: this.configWhitelist,
       };
     }
   }

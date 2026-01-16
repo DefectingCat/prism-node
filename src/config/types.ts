@@ -26,6 +26,7 @@ export interface Config {
   postgres: PostgresConfig; // PostgreSQL database configuration
   cron?: string; // Node-cron schedule expression (e.g., "0 * * * *" for every hour)
   enableDatabase?: boolean; // Whether to enable database functionality (default: false)
+  whitelist?: string[]; // Domain whitelist for direct connection (e.g., ["example.com", "*.google.com"])
 }
 
 /**
