@@ -51,12 +51,12 @@ export async function loadConfig(configPath: string): Promise<Config> {
     // 验证 whitelist（可选）
     if (config.whitelist !== undefined) {
       if (!Array.isArray(config.whitelist)) {
-        throw new Error("Whitelist must be an array of domain strings");
+        throw new Error('Whitelist must be an array of domain strings');
       }
       // 验证数组中的每个元素都是字符串
       for (let i = 0; i < config.whitelist.length; i++) {
         const domain = config.whitelist[i];
-        if (typeof domain !== "string") {
+        if (typeof domain !== 'string') {
           throw new Error(`Whitelist entry at index ${i} must be a string`);
         }
         if (!domain.trim()) {

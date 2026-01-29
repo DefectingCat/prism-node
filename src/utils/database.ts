@@ -394,7 +394,6 @@ class Database {
     }
   }
 
-
   /**
    * Insert a domain into the whitelist
    * @param domainWhitelist Domain whitelist object

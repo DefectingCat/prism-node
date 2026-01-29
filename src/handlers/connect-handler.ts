@@ -8,6 +8,7 @@ import {
   formatBytes,
   generateRequestId,
   isDomainInWhitelist,
+  isPrivateIP,
 } from '../utils/utils';
 
 /**
@@ -141,11 +142,21 @@ export async function handleConnect(
     const domainWhitelist = await statsCollector.getDomainWhitelist();
     let targetSocket: net.Socket;
 
-    if (isDomainInWhitelist(hostname, domainWhitelist.whitelist)) {
+    if (isPrivateIP(hostname)) {
+      logger.warn(
+        `[HTTPS] [${requestId}] Target ${hostname} is a private IP address, connecting directly`,
+      );
+      // 直接连接内网地址，不通过 SOCKS 代理
+      targetSocket = await new Promise((resolve, reject) => {
+        const socket = net.createConnection(targetPort, hostname);
+        socket.on('connect', () => resolve(socket));
+        socket.on('error', (err) => reject(err));
+      });
+    } else if (isDomainInWhitelist(hostname, domainWhitelist.whitelist)) {
       logger.warn(
         `[HTTPS] [${requestId}] Target domain ${hostname} is in whitelist, connecting directly`,
       );
-      // 直接连接目标服务器，不通过 SOCKS 代理
+      // 直接连接白名单域名，不通过 SOCKS 代理
       targetSocket = await new Promise((resolve, reject) => {
         const socket = net.createConnection(targetPort, hostname);
         socket.on('connect', () => resolve(socket));
