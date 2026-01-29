@@ -117,35 +117,132 @@ export async function handleHttpRequest(
   try {
     // 检查目标域名是否在白名单中
     const domainWhitelist = await statsCollector.getDomainWhitelist();
-    let targetSocket: net.Socket;
+    const isDirectConnection = isPrivateIP(targetHost) || isDomainInWhitelist(targetHost, domainWhitelist.whitelist);
 
-    if (isPrivateIP(targetHost)) {
+    if (isDirectConnection) {
       logger.warn(
-        `[HTTP] [${requestId}] Target ${targetHost} is a private IP address, connecting directly`,
+        `[HTTP] [${requestId}] Target ${targetHost} is ${isPrivateIP(targetHost) ? 'private IP' : 'in whitelist'}, using direct HTTP proxy`,
       );
-      // 直接连接内网地址，不通过 SOCKS 代理
-      targetSocket = await new Promise((resolve, reject) => {
-        const socket = net.createConnection(targetPort, targetHost);
-        socket.on('connect', () => resolve(socket));
-        socket.on('error', (err) => reject(err));
+
+      // 采用普通HTTP反向代理方式连接上游服务器
+      const http = url.protocol === 'https:' ? require('https') : require('http');
+
+      // 构建上游请求选项
+      const options: any = {
+        hostname: targetHost,
+        port: targetPort,
+        path: url.pathname + url.search,
+        method: req.method,
+        headers: { ...req.headers },
+      };
+
+      // 移除代理特定的头
+      delete options.headers['proxy-connection'];
+      delete options.headers['proxy-authorization'];
+
+      // 发起上游请求
+      const upstreamReq = http.request(options, (upstreamRes: http.IncomingMessage) => {
+        // 转发响应头
+        res.writeHead(upstreamRes.statusCode!, upstreamRes.headers);
+
+        // 转发响应数据
+        upstreamRes.on('data', (chunk: Buffer) => {
+          bytesReceived += chunk.length;
+          statsCollector.addBytesDown(requestId, chunk.length);
+          res.write(chunk);
+        });
+
+        upstreamRes.on('end', () => {
+          const duration = Date.now() - startTime;
+          logger.info(`[HTTP] [${requestId}] Response completed`);
+          logger.info(`[HTTP] [${requestId}] Duration: ${duration}ms`);
+          logger.info(
+            `[HTTP] [${requestId}] Bytes sent: ${formatBytes(bytesSent)}`,
+          );
+          logger.info(
+            `[HTTP] [${requestId}] Bytes received: ${formatBytes(bytesReceived)}`,
+          );
+          logger.info(`[HTTP] [${requestId}] ===== Request Complete =====\n`);
+
+          statsCollector.endConnection(requestId, { status: 'success' });
+          res.end();
+        });
       });
-    } else if (isDomainInWhitelist(targetHost, domainWhitelist.whitelist)) {
-      logger.warn(
-        `[HTTP] [${requestId}] Target domain ${targetHost} is in whitelist, connecting directly`,
-      );
-      // 直接连接白名单域名，不通过 SOCKS 代理
-      targetSocket = await new Promise((resolve, reject) => {
-        const socket = net.createConnection(targetPort, targetHost);
-        socket.on('connect', () => resolve(socket));
-        socket.on('error', (err) => reject(err));
+
+      // 处理上游请求错误
+      upstreamReq.on('error', (err: Error) => {
+        const duration = Date.now() - startTime;
+        logger.error(`[HTTP] [${requestId}] Upstream error: ${err.message}`);
+        logger.error(
+          `[HTTP] [${requestId}] Duration before error: ${duration}ms`,
+        );
+        statsCollector.endConnection(requestId, {
+          status: 'error',
+          errorMessage: err.message,
+        });
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'text/plain' });
+          res.end('Bad Gateway');
+        } else if (!res.writableEnded) {
+          res.end();
+        }
       });
+
+      // 处理超时
+      upstreamReq.setTimeout(30000, () => {
+        const duration = Date.now() - startTime;
+        logger.error(
+          `[HTTP] [${requestId}] Upstream timeout after ${duration}ms`,
+        );
+        statsCollector.endConnection(requestId, {
+          status: 'timeout',
+          errorMessage: `Timeout after ${duration}ms`,
+        });
+        upstreamReq.destroy();
+        if (!res.headersSent) {
+          res.writeHead(504, { 'Content-Type': 'text/plain' });
+          res.end('Gateway Timeout');
+        } else if (!res.writableEnded) {
+          res.end();
+        }
+      });
+
+      // 转发请求数据
+      req.on('data', (chunk) => {
+        bytesSent += chunk.length;
+        statsCollector.addBytesUp(requestId, chunk.length);
+        upstreamReq.write(chunk);
+      });
+
+      // 结束请求
+      req.on('end', () => {
+        upstreamReq.end();
+      });
+
+      // 处理客户端请求错误
+      req.on('error', (err) => {
+        logger.error(
+          `[HTTP] [${requestId}] Client request error: ${err.message}`,
+        );
+        upstreamReq.destroy();
+      });
+
+      req.on('aborted', () => {
+        logger.error(`[HTTP] [${requestId}] Client request aborted`);
+        upstreamReq.destroy();
+      });
+
+      res.on('finish', () => {
+        upstreamReq.destroy();
+      });
+
     } else {
       logger.info(
         `[HTTP] [${requestId}] Connecting to SOCKS5 proxy ${
           socksAddr.host
         }:${socksAddr.port}...`,
       );
-      // 通过 SOCKS 代理连接目标服务器
+      // 通过 SOCKS 代理连接目标服务器（保持原样）
       const socksConnection = await SocksClient.createConnection({
         proxy: {
           host: socksAddr.host,
@@ -158,136 +255,134 @@ export async function handleHttpRequest(
           port: targetPort,
         },
       });
-      targetSocket = socksConnection.socket;
+      const targetSocket = socksConnection.socket;
       logger.info(
         `[HTTP] [${requestId}] SOCKS5 connection established successfully`,
       );
-    }
 
-    // Set socket timeout to prevent hanging connections
-    targetSocket.setTimeout(30000);
+      // Set socket timeout to prevent hanging connections
+      targetSocket.setTimeout(30000);
 
-    // Build HTTP request to send through SOCKS5
-    const path = url.pathname + url.search;
-    const requestLine = `${req.method} ${path} HTTP/${req.httpVersion}\r\n`;
+      // Build HTTP request to send through SOCKS5
+      const path = url.pathname + url.search;
+      const requestLine = `${req.method} ${path} HTTP/${req.httpVersion}\r\n`;
 
-    // Forward headers, but remove proxy-specific headers and add Connection: close
-    const headers = { ...req.headers };
-    delete headers['proxy-connection'];
-    delete headers['proxy-authorization'];
-    // Force connection close to ensure response completes properly
-    headers.connection = 'close';
+      // Forward headers, but remove proxy-specific headers
+      const headers = { ...req.headers };
+      delete headers['proxy-connection'];
+      delete headers['proxy-authorization'];
 
-    const headerLines = Object.entries(headers)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\r\n');
+      const headerLines = Object.entries(headers)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\r\n');
 
-    const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
-    safeSocketWrite(targetSocket, httpRequest, requestId);
+      const httpRequest = `${requestLine}${headerLines}\r\n\r\n`;
+      safeSocketWrite(targetSocket, httpRequest, requestId);
 
-    logger.info(`[HTTP] [${requestId}] Request sent to target server`);
+      logger.info(`[HTTP] [${requestId}] Request sent to target server`);
 
-    // Track data transfer
-    req.on('data', (chunk) => {
-      bytesSent += chunk.length;
-      statsCollector.addBytesUp(requestId, chunk.length);
-    });
+      // Track data transfer
+      req.on('data', (chunk) => {
+        bytesSent += chunk.length;
+        statsCollector.addBytesUp(requestId, chunk.length);
+      });
 
-    targetSocket.on('data', (chunk) => {
-      bytesReceived += chunk.length;
-      statsCollector.addBytesDown(requestId, chunk.length);
-    });
+      targetSocket.on('data', (chunk) => {
+        bytesReceived += chunk.length;
+        statsCollector.addBytesDown(requestId, chunk.length);
+      });
 
-    // Forward request body if present (for POST, PUT, etc.)
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      req.pipe(targetSocket, { end: true });
-    }
+      // Forward request body if present (for POST, PUT, etc.)
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        req.pipe(targetSocket, { end: true });
+      }
 
-    // Forward response from target server back to client
-    // Pipe the raw HTTP response (headers + body) directly to the client response
-    targetSocket.pipe(res);
+      // Forward response from target server back to client
+      // Pipe the raw HTTP response (headers + body) directly to the client response
+      targetSocket.pipe(res);
 
-    // Properly close the response when the socket ends
-    targetSocket.on('end', () => {
-      const duration = Date.now() - startTime;
-      logger.info(`[HTTP] [${requestId}] Response completed`);
-      logger.info(`[HTTP] [${requestId}] Duration: ${duration}ms`);
-      logger.info(
-        `[HTTP] [${requestId}] Bytes sent: ${formatBytes(bytesSent)}`,
-      );
-      logger.info(
-        `[HTTP] [${requestId}] Bytes received: ${formatBytes(bytesReceived)}`,
-      );
-      logger.info(`[HTTP] [${requestId}] ===== Request Complete =====\n`);
-
-      statsCollector.endConnection(requestId, { status: 'success' });
-      res.end();
-    });
-
-    targetSocket.on('close', () => {
-      if (!res.writableEnded) {
+      // Properly close the response when the socket ends
+      targetSocket.on('end', () => {
         const duration = Date.now() - startTime;
+        logger.info(`[HTTP] [${requestId}] Response completed`);
+        logger.info(`[HTTP] [${requestId}] Duration: ${duration}ms`);
         logger.info(
-          `[HTTP] [${requestId}] Connection closed (duration: ${duration}ms)`,
+          `[HTTP] [${requestId}] Bytes sent: ${formatBytes(bytesSent)}`,
         );
+        logger.info(
+          `[HTTP] [${requestId}] Bytes received: ${formatBytes(bytesReceived)}`,
+        );
+        logger.info(`[HTTP] [${requestId}] ===== Request Complete =====\n`);
+
         statsCollector.endConnection(requestId, { status: 'success' });
         res.end();
-      }
-    });
-
-    // Handle errors
-    targetSocket.on('error', (err) => {
-      const duration = Date.now() - startTime;
-      logger.error(`[HTTP] [${requestId}] SOCKS socket error: ${err.message}`);
-      logger.error(
-        `[HTTP] [${requestId}] Duration before error: ${duration}ms`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'error',
-        errorMessage: err.message,
       });
-      if (!res.headersSent) {
-        res.writeHead(502, { 'Content-Type': 'text/plain' });
-        res.end('Bad Gateway');
-      } else if (!res.writableEnded) {
-        res.end();
-      }
-    });
 
-    targetSocket.on('timeout', () => {
-      const duration = Date.now() - startTime;
-      logger.error(
-        `[HTTP] [${requestId}] SOCKS socket timeout after ${duration}ms`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'timeout',
-        errorMessage: `Socket timeout after ${duration}ms`,
+      targetSocket.on('close', () => {
+        if (!res.writableEnded) {
+          const duration = Date.now() - startTime;
+          logger.info(
+            `[HTTP] [${requestId}] Connection closed (duration: ${duration}ms)`,
+          );
+          statsCollector.endConnection(requestId, { status: 'success' });
+          res.end();
+        }
       });
-      safeSocketDestroy(targetSocket, requestId);
-      if (!res.headersSent) {
-        res.writeHead(504, { 'Content-Type': 'text/plain' });
-        res.end('Gateway Timeout');
-      } else if (!res.writableEnded) {
-        res.end();
-      }
-    });
 
-    req.on('error', (err) => {
-      logger.error(
-        `[HTTP] [${requestId}] Client request error: ${err.message}`,
-      );
-      safeSocketDestroy(targetSocket, requestId);
-    });
+      // Handle errors
+      targetSocket.on('error', (err) => {
+        const duration = Date.now() - startTime;
+        logger.error(`[HTTP] [${requestId}] SOCKS socket error: ${err.message}`);
+        logger.error(
+          `[HTTP] [${requestId}] Duration before error: ${duration}ms`,
+        );
+        statsCollector.endConnection(requestId, {
+          status: 'error',
+          errorMessage: err.message,
+        });
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'text/plain' });
+          res.end('Bad Gateway');
+        } else if (!res.writableEnded) {
+          res.end();
+        }
+      });
 
-    req.on('aborted', () => {
-      logger.error(`[HTTP] [${requestId}] Client request aborted`);
-      safeSocketDestroy(targetSocket, requestId);
-    });
+      targetSocket.on('timeout', () => {
+        const duration = Date.now() - startTime;
+        logger.error(
+          `[HTTP] [${requestId}] SOCKS socket timeout after ${duration}ms`,
+        );
+        statsCollector.endConnection(requestId, {
+          status: 'timeout',
+          errorMessage: `Socket timeout after ${duration}ms`,
+        });
+        safeSocketDestroy(targetSocket, requestId);
+        if (!res.headersSent) {
+          res.writeHead(504, { 'Content-Type': 'text/plain' });
+          res.end('Gateway Timeout');
+        } else if (!res.writableEnded) {
+          res.end();
+        }
+      });
 
-    // Clean up when client response finishes
-    res.on('finish', () => {
-      safeSocketDestroy(targetSocket, requestId);
-    });
+      req.on('error', (err) => {
+        logger.error(
+          `[HTTP] [${requestId}] Client request error: ${err.message}`,
+        );
+        safeSocketDestroy(targetSocket, requestId);
+      });
+
+      req.on('aborted', () => {
+        logger.error(`[HTTP] [${requestId}] Client request aborted`);
+        safeSocketDestroy(targetSocket, requestId);
+      });
+
+      // Clean up when client response finishes
+      res.on('finish', () => {
+        safeSocketDestroy(targetSocket, requestId);
+      });
+    }
   } catch (error) {
     const duration = Date.now() - startTime;
     logger.error(
