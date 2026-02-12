@@ -1,14 +1,12 @@
-import type * as http from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import * as net from 'node:net';
 import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
-import { statsCollector } from '../utils/stats-collector';
 import {
   formatBytes,
   generateRequestId,
   isDomainInWhitelist,
-  isPrivateIP,
 } from '../utils/utils';
 
 /**
@@ -43,34 +41,13 @@ function safeSocketWrite(
 }
 
 /**
- * Safely end a socket connection
- * @param socket - The socket to end
- * @param requestId - Request ID for logging
- */
-function safeSocketEnd(socket: net.Socket, requestId: string): void {
-  try {
-    if (!socket.destroyed) {
-      socket.end();
-    }
-  } catch (error) {
-    logger.warn(
-      `[HTTPS] [${requestId}] Error ending socket: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-  }
-}
-
-/**
  * Safely destroy a socket
  * @param socket - The socket to destroy
  * @param requestId - Request ID for logging
  */
 function safeSocketDestroy(socket: net.Socket, requestId: string): void {
   try {
-    if (!socket.destroyed) {
-      socket.destroy();
-    }
+    socket.destroy();
   } catch (error) {
     logger.warn(
       `[HTTPS] [${requestId}] Error destroying socket: ${
@@ -81,263 +58,170 @@ function safeSocketDestroy(socket: net.Socket, requestId: string): void {
 }
 
 /**
- * Handles HTTPS CONNECT requests by establishing a secure tunnel through SOCKS5 proxy
- * @param req - HTTP request containing target hostname:port
- * @param clientSocket - Client connection socket
- * @param head - Initial data packet from client
- * @param socksAddr - SOCKS5 proxy server address
+ * Handle HTTPS CONNECT requests by establishing tunnel through SOCKS5 proxy
+ * @param req - HTTP CONNECT request object
+ * @param clientSocket - Client socket for the connection
+ * @param head - First packet of the upgrade stream (may be empty)
+ * @param socksAddr - SOCKS5 proxy address
  */
 export async function handleConnect(
-  req: http.IncomingMessage,
+  req: IncomingMessage,
   clientSocket: net.Socket,
   head: Buffer,
   socksAddr: ParsedAddress,
 ): Promise<void> {
   const requestId = generateRequestId();
-  const startTime = Date.now();
-
-  // Parse target destination from CONNECT request URL
-  const { port, hostname } = new URL(`http://${req.url}`);
-  const targetPort = Number.parseInt(port, 10);
-
-  let bytesFromClient = 0;
-  let bytesToClient = 0;
-
-  logger.info(`[HTTPS] [${requestId}] ===== New HTTPS CONNECT =====`);
-  logger.info(`[HTTPS] [${requestId}] Target: ${hostname}:${targetPort}`);
-  logger.info(
-    `[HTTPS] [${requestId}] Client: ${
-      clientSocket.remoteAddress
-    }:${clientSocket.remotePort}`,
-  );
-  logger.info(
-    `[HTTPS] [${requestId}] Initial data length: ${head.length} bytes`,
-  );
-
-  // 开始统计收集
-  statsCollector.startConnection(requestId, {
-    type: 'HTTPS',
-    targetHost: hostname,
-    targetPort,
-    clientIP: clientSocket.remoteAddress || 'unknown',
-  });
-
-  if (!hostname || Number.isNaN(targetPort)) {
-    logger.error(`[HTTPS] [${requestId}] ERROR: Invalid target address`);
-    await statsCollector.endConnection(requestId, {
-      status: 'error',
-      errorMessage: 'Invalid target address',
-    });
-    safeSocketWrite(
-      clientSocket,
-      'HTTP/1.1 400 Bad Request\r\n\r\n',
-      requestId,
-    );
-    clientSocket.end();
-    return;
-  }
 
   try {
-    // 检查目标域名是否在白名单中
-    const domainWhitelist = await statsCollector.getDomainWhitelist();
-    let targetSocket: net.Socket;
-
-    if (isPrivateIP(hostname)) {
-      logger.warn(
-        `[HTTPS] [${requestId}] Target ${hostname} is a private IP address, connecting directly`,
-      );
-      // 直接连接内网地址，不通过 SOCKS 代理
-      targetSocket = await new Promise((resolve, reject) => {
-        const socket = net.createConnection(targetPort, hostname);
-        socket.on('connect', () => resolve(socket));
-        socket.on('error', (err) => reject(err));
-      });
-    } else if (isDomainInWhitelist(hostname, domainWhitelist.whitelist)) {
-      logger.warn(
-        `[HTTPS] [${requestId}] Target domain ${hostname} is in whitelist, connecting directly`,
-      );
-      // 直接连接白名单域名，不通过 SOCKS 代理
-      targetSocket = await new Promise((resolve, reject) => {
-        const socket = net.createConnection(targetPort, hostname);
-        socket.on('connect', () => resolve(socket));
-        socket.on('error', (err) => reject(err));
-      });
-    } else {
-      logger.info(
-        `[HTTPS] [${requestId}] Connecting to SOCKS5 proxy ${
-          socksAddr.host
-        }:${socksAddr.port}...`,
-      );
-      // 通过 SOCKS 代理连接目标服务器
-      const socksConnection = await SocksClient.createConnection({
-        proxy: {
-          host: socksAddr.host,
-          port: socksAddr.port,
-          type: 5, // SOCKS5 protocol
-        },
-        command: 'connect',
-        destination: {
-          host: hostname,
-          port: targetPort,
-        },
-      });
-      targetSocket = socksConnection.socket;
-      logger.info(
-        `[HTTPS] [${requestId}] SOCKS5 connection established successfully`,
-      );
+    // Parse CONNECT request URL (format: hostname:port)
+    if (!req.url) {
+      logger.warn(`[HTTPS] [${requestId}] No URL provided in CONNECT request`);
+      clientSocket.destroy();
+      return;
     }
 
-    // Set socket timeout to prevent hanging connections
-    targetSocket.setTimeout(60000);
-    clientSocket.setTimeout(60000);
+    const [targetHost, targetPortStr] = req.url.split(':');
+    const targetPort = parseInt(targetPortStr, 10);
 
-    // Notify client that tunnel is established
-    safeSocketWrite(
-      clientSocket,
-      'HTTP/1.1 200 Connection Established\r\n\r\n',
-      requestId,
-    );
+    if (
+      !targetHost ||
+      isNaN(targetPort) ||
+      targetPort < 1 ||
+      targetPort > 65535
+    ) {
+      logger.warn(`[HTTPS] [${requestId}] Invalid CONNECT target: ${req.url}`);
+      clientSocket.destroy();
+      return;
+    }
+
     logger.info(
-      `[HTTPS] [${requestId}] Tunnel established, starting data relay`,
+      `[HTTPS] [${requestId}] CONNECT ${targetHost}:${targetPort} via SOCKS5`,
     );
 
-    // Forward any initial data from CONNECT request
-    if (head.length > 0) {
-      targetSocket.write(head);
-      bytesFromClient += head.length;
-      statsCollector.addBytesUp(requestId, head.length);
+    // Check if domain is in whitelist for direct connection
+    const configWhitelist: string[] = []; // Empty whitelist since no database
+    const useDirectConnection = isDomainInWhitelist(
+      targetHost,
+      configWhitelist,
+    );
+
+    if (useDirectConnection) {
+      logger.info(
+        `[HTTPS] [${requestId}] Using direct connection for ${targetHost}`,
+      );
     }
 
-    // Track data transfer
+    // Create SOCKS5 connection options
+    const socksOptions = {
+      proxy: {
+        host: socksAddr.host,
+        port: socksAddr.port,
+        type: 5 as any,
+      },
+      command: 'connect' as const,
+      destination: {
+        host: targetHost,
+        port: targetPort,
+      },
+    };
+
+    // Establish SOCKS5 connection
+    const socksConnection = await SocksClient.createConnection(socksOptions);
+    logger.info(`[HTTPS] [${requestId}] SOCKS5 tunnel established`);
+
+    // Send 200 Connection established response to client
+    if (
+      !safeSocketWrite(
+        clientSocket,
+        'HTTP/1.1 200 Connection Established\r\n\r\n',
+        requestId,
+      )
+    ) {
+      clientSocket.destroy();
+      return;
+    }
+
+    const targetSocket = socksConnection.socket;
+
+    // If there's initial data from client, forward it to target
+    if (head && head.length > 0) {
+      logger.debug(
+        `[HTTPS] [${requestId}] Forwarding ${head.length} bytes of initial data`,
+      );
+      safeSocketWrite(targetSocket, head, requestId);
+    }
+
+    // Set up bidirectional data forwarding between client and target
+    let bytesToClient = 0;
+    let bytesToTarget = 0;
+
     clientSocket.on('data', (chunk) => {
-      bytesFromClient += chunk.length;
-      statsCollector.addBytesUp(requestId, chunk.length);
+      if (!targetSocket.destroyed) {
+        bytesToTarget += chunk.length;
+        safeSocketWrite(targetSocket, chunk, requestId);
+      }
     });
 
     targetSocket.on('data', (chunk) => {
-      bytesToClient += chunk.length;
-      statsCollector.addBytesDown(requestId, chunk.length);
+      if (!clientSocket.destroyed) {
+        bytesToClient += chunk.length;
+        safeSocketWrite(clientSocket, chunk, requestId);
+      }
     });
 
-    // Set up bidirectional data piping between client and SOCKS5 proxy
-    targetSocket.pipe(clientSocket);
-    clientSocket.pipe(targetSocket);
-
-    // Handle socket errors gracefully
-    targetSocket.on('error', (err) => {
-      const duration = Date.now() - startTime;
-      logger.error(`[HTTPS] [${requestId}] SOCKS socket error: ${err.message}`);
-      logger.error(
-        `[HTTPS] [${requestId}] Duration: ${duration}ms, Sent: ${formatBytes(
-          bytesFromClient,
-        )}, Received: ${formatBytes(bytesToClient)}`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'error',
-        errorMessage: err.message,
-      });
-      safeSocketDestroy(clientSocket, requestId);
+    // Handle connection closures
+    clientSocket.on('end', () => {
+      logger.info(`[HTTPS] [${requestId}] Client connection closed`);
+      if (!targetSocket.destroyed) {
+        targetSocket.end();
+      }
     });
 
-    clientSocket.on('error', (err) => {
-      const duration = Date.now() - startTime;
-      logger.error(
-        `[HTTPS] [${requestId}] Client socket error: ${err.message}`,
-      );
-      logger.error(
-        `[HTTPS] [${requestId}] Duration: ${duration}ms, Sent: ${formatBytes(
-          bytesFromClient,
-        )}, Received: ${formatBytes(bytesToClient)}`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'error',
-        errorMessage: err.message,
-      });
-      safeSocketDestroy(targetSocket, requestId);
+    targetSocket.on('end', () => {
+      logger.info(`[HTTPS] [${requestId}] Target connection closed`);
+      if (!clientSocket.destroyed) {
+        clientSocket.end();
+      }
     });
 
-    targetSocket.on('timeout', () => {
-      const duration = Date.now() - startTime;
-      logger.error(
-        `[HTTPS] [${requestId}] SOCKS socket timeout after ${duration}ms`,
+    // Handle connection errors
+    clientSocket.on('error', (error) => {
+      logger.warn(
+        `[HTTPS] [${requestId}] Client connection error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
-      logger.error(
-        `[HTTPS] [${requestId}] Sent: ${formatBytes(
-          bytesFromClient,
-        )}, Received: ${formatBytes(bytesToClient)}`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'timeout',
-        errorMessage: `Socket timeout after ${duration}ms`,
-      });
-      safeSocketDestroy(targetSocket, requestId);
-      safeSocketDestroy(clientSocket, requestId);
+      if (!targetSocket.destroyed) {
+        targetSocket.destroy();
+      }
     });
 
-    clientSocket.on('timeout', () => {
-      const duration = Date.now() - startTime;
-      logger.error(
-        `[HTTPS] [${requestId}] Client socket timeout after ${duration}ms`,
+    targetSocket.on('error', (error) => {
+      logger.warn(
+        `[HTTPS] [${requestId}] Target connection error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
-      logger.error(
-        `[HTTPS] [${requestId}] Sent: ${formatBytes(
-          bytesFromClient,
-        )}, Received: ${formatBytes(bytesToClient)}`,
-      );
-      statsCollector.endConnection(requestId, {
-        status: 'timeout',
-        errorMessage: `Client timeout after ${duration}ms`,
-      });
-      safeSocketDestroy(targetSocket, requestId);
-      safeSocketDestroy(clientSocket, requestId);
+      if (!clientSocket.destroyed) {
+        clientSocket.destroy();
+      }
     });
 
-    // Clean up when either side closes
-    targetSocket.on('close', () => {
-      const duration = Date.now() - startTime;
-      logger.info(`[HTTPS] [${requestId}] SOCKS socket closed`);
-      logger.info(`[HTTPS] [${requestId}] Duration: ${duration}ms`);
+    // Log final transfer amounts when either side closes
+    const logFinalTransfer = () => {
       logger.info(
-        `[HTTPS] [${requestId}] Bytes from client: ${formatBytes(
-          bytesFromClient,
-        )}`,
+        `[HTTPS] [${requestId}] Transfer complete - ↑${formatBytes(bytesToTarget)} ↓${formatBytes(bytesToClient)}`,
       );
-      logger.info(
-        `[HTTPS] [${requestId}] Bytes to client: ${formatBytes(bytesToClient)}`,
-      );
-      logger.info(`[HTTPS] [${requestId}] ===== Tunnel Closed =====\n`);
+    };
 
-      statsCollector.endConnection(requestId, { status: 'success' });
-      safeSocketDestroy(clientSocket, requestId);
-    });
-
-    clientSocket.on('close', () => {
-      const duration = Date.now() - startTime;
-      logger.info(
-        `[HTTPS] [${requestId}] Client socket closed (duration: ${duration}ms)`,
-      );
-      statsCollector.endConnection(requestId, { status: 'success' });
-      safeSocketDestroy(targetSocket, requestId);
-    });
+    clientSocket.once('close', logFinalTransfer);
+    targetSocket.once('close', logFinalTransfer);
   } catch (error) {
-    const duration = Date.now() - startTime;
     logger.error(
-      `[HTTPS] [${requestId}] SOCKS connection failed: ${
+      `[HTTPS] [${requestId}] CONNECT failed: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );
-    logger.error(
-      `[HTTPS] [${requestId}] Duration before failure: ${duration}ms`,
-    );
-    await statsCollector.endConnection(requestId, {
-      status: 'error',
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-    safeSocketWrite(
-      clientSocket,
-      'HTTP/1.1 502 Bad Gateway\r\n\r\n',
-      requestId,
-    );
-    safeSocketEnd(clientSocket, requestId);
+    safeSocketDestroy(clientSocket, requestId);
   }
 }

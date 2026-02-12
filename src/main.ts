@@ -4,14 +4,11 @@ import * as path from 'node:path';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { loadConfig } from './config/config';
-import { startHttpServer } from './server/http-server';
 import { startProxy } from './server/proxy-server';
-import CronManager from './utils/cron-manager';
-import { database } from './utils/database';
 import { configureLogger, logger } from './utils/logger';
 
 /**
- * 工作进程入口 - 启动代理服务器和 HTTP 服务器
+ * 工作进程入口 - 启动代理服务器
  */
 async function startWorker(workerConfigPath: string): Promise<void> {
   try {
@@ -26,16 +23,12 @@ async function startWorker(workerConfigPath: string): Promise<void> {
 
     logger.info(`Worker ${process.pid} configuration loaded successfully`);
 
-    const [proxyAddr, httpAddr] = await Promise.all([
-      startProxy(config),
-      startHttpServer(config),
-    ]);
+    const proxyAddr = await startProxy(config);
     logger.info(`Worker ${process.pid} started successfully`);
     logger.info(`Proxy server listening on: ${proxyAddr}`);
-    logger.info(`HTTP server listening on: ${httpAddr}`);
   } catch (error) {
     logger.error(
-      `Worker ${process.pid} failed to start servers:`,
+      `Worker ${process.pid} failed to start proxy server:`,
       error instanceof Error ? error.message : String(error),
     );
     // 输出错误到 stderr 确保父进程能捕获
@@ -64,31 +57,6 @@ async function startMaster(configPath: string): Promise<void> {
     const numCPUs = os.cpus().length;
     logger.info(`CPU cores detected: ${numCPUs}`);
     logger.info(`Creating ${numCPUs} worker processes for load balancing`);
-
-    // 初始化数据库连接（主进程需要单独初始化以执行定时任务）
-    if (config.enableDatabase) {
-      await database.initialize(config.postgres);
-    }
-
-    // 检查是否配置了 cron 任务
-    if (config.cron) {
-      logger.info(`Cron configuration found: ${config.cron}`);
-      // 添加定时任务，回调函数先空着
-      CronManager.addTask({
-        name: 'main-cron-task',
-        schedule: config.cron,
-        callback: async () => {
-          logger.info('Main cron task executed - truncating access logs');
-          try {
-            await database.truncateAccessLogs();
-            logger.info('Access logs truncated successfully');
-          } catch (error) {
-            logger.error('Failed to truncate access logs:', error);
-          }
-        },
-        enabled: true,
-      });
-    }
 
     // 为每个 CPU 核心创建一个工作进程
     for (let i = 0; i < numCPUs; i++) {

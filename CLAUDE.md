@@ -84,7 +84,6 @@ prism-node/
 │       ├── logger.ts        # Winston logger
 │       ├── stats-collector.ts # Statistics collector
 │       ├── database.ts      # PostgreSQL connection
-│       ├── cron-manager.ts  # Node-cron scheduler
 │       └── utils.ts         # Helper functions
 ├── frontend/                # React frontend
 │   ├── src/
@@ -111,7 +110,6 @@ prism-node/
 - **WebSocket (ws)**: Real-time log streaming
 - **SOCKS**: SOCKS5 proxy client
 - **bcryptjs**: Password hashing
-- **node-cron**: Scheduled tasks
 
 ### Frontend Stack
 - **React 19**: Modern UI framework
@@ -164,7 +162,6 @@ prism-node/
     "user": "username",
     "password": "password"
   },
-  "cron": "0 * * * *",            // Node-cron schedule (optional)
   "enableDatabase": false         // Enable/disable database (default: false)
 }
 ```
@@ -228,7 +225,7 @@ The build system (`scripts/build.mjs`) handles:
 1. Start master process that manages worker processes
 2. Fork worker processes for each CPU core
 3. Handle graceful shutdown
-4. Manage cron tasks
+4. Handle graceful shutdown
 
 ## Key Classes and Utilities
 

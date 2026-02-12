@@ -13,39 +13,9 @@ export async function loadConfig(configPath: string): Promise<Config> {
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON5.parse(content) as Config;
 
-    // Set default value for enableDatabase if not provided
-    if (config.enableDatabase === undefined) {
-      config.enableDatabase = false;
-    }
-
     // Validate required fields
     if (!config.addr || !config.socks_addr) {
       throw new Error("Config must contain 'addr' and 'socks_addr' properties");
-    }
-
-    // Validate PostgreSQL configuration only if enableDatabase is true
-    if (config.enableDatabase) {
-      if (!config.postgres) {
-        throw new Error(
-          "Config must contain 'postgres' property when enableDatabase is true",
-        );
-      }
-      if (
-        !config.postgres.host ||
-        !config.postgres.database ||
-        !config.postgres.user ||
-        config.postgres.password == null
-      ) {
-        throw new Error(
-          "PostgreSQL config must contain 'host', 'database', 'user', and 'password' properties when enableDatabase is true",
-        );
-      }
-      if (
-        config.postgres.port &&
-        (config.postgres.port < 1 || config.postgres.port > 65535)
-      ) {
-        throw new Error('PostgreSQL port must be between 1 and 65535');
-      }
     }
 
     // 验证 whitelist（可选）
@@ -62,18 +32,6 @@ export async function loadConfig(configPath: string): Promise<Config> {
         if (!domain.trim()) {
           throw new Error(`Whitelist entry at index ${i} cannot be empty`);
         }
-      }
-    }
-
-    // 验证 cron 表达式（可选）
-    if (config.cron) {
-      // 简单验证 cron 表达式格式（5或6个字段，支持常用格式）
-      const cronPattern =
-        /^(\*|(\d+|[\d,-/*]+))(\s+(\*|(\d+|[\d,-/*]+))){4,5}$/;
-      if (!cronPattern.test(config.cron.trim())) {
-        throw new Error(
-          "Cron configuration must be a valid cron expression (e.g., '0 * * * *')",
-        );
       }
     }
 

@@ -4,7 +4,6 @@ import type { Config } from '../config/types';
 import { handleConnect } from '../handlers/connect-handler';
 import { handleHttpRequest } from '../handlers/http-handler';
 import logger from '../utils/logger';
-import { statsCollector } from '../utils/stats-collector';
 import { parseAddress } from '../utils/utils';
 
 /**
@@ -18,9 +17,6 @@ export async function startProxy(config: Config): Promise<string> {
   logger.info(`Starting proxy server...`);
   logger.info(`Listen address: ${config.addr}`);
   logger.info(`SOCKS5 address: ${config.socks_addr}`);
-
-  // Initialize stats collector with config
-  await statsCollector.initialize(config);
 
   // Create HTTP server that handles standard HTTP requests
   const server = http.createServer((req, res) => {
@@ -55,15 +51,25 @@ export async function startProxy(config: Config): Promise<string> {
     logger.info(`========================================\n`);
   });
 
-  server.on('error', (error) => {
-    logger.error(`Server error:`, error.message);
-    process.exit(1);
+  server.on('error', (error: any) => {
+    // Log detailed error information directly to console to bypass logger formatting issues
+    console.error('SERVER ERROR DETAILS:', error);
+
+    logger.error(`Server error: ${error.message || String(error)}`);
+    if (error.stack) {
+      logger.debug(error.stack);
+    }
+
+    // Only exit on critical errors that prevent the server from functioning
+    if (error.code === 'EADDRINUSE' || error.code === 'EACCES') {
+      logger.error(`Critical error: ${error.code} - exiting worker`);
+      process.exit(1);
+    }
   });
 
   // 处理进程退出信号
   const gracefulShutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`);
-    await statsCollector.close();
     process.exit(0);
   };
 

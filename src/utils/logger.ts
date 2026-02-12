@@ -1,10 +1,6 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import type { Config } from '../config/types';
-import {
-  logStreamHandler,
-  WebSocketTransport,
-} from '../handlers/log-stream-handler';
 
 /**
  * Winston logger instance for the Prism Node proxy application
@@ -17,10 +13,6 @@ export const logger = winston.createLogger({
     winston.format.json(),
   ),
   defaultMeta: { service: 'prism-node' },
-  transports: [
-    // WebSocket transport for real-time log streaming (always enabled)
-    new WebSocketTransport(logStreamHandler),
-  ],
 });
 
 // Console output in development mode with colors
