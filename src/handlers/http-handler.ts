@@ -6,15 +6,161 @@ import logger from '../utils/logger';
 import { generateRequestId, isDomainInWhitelist } from '../utils/utils';
 
 /**
+ * Handle direct HTTP requests without going through SOCKS5 proxy
+ * @param req - HTTP request object
+ * @param res - HTTP response object
+ * @param targetHost - Target host
+ * @param targetPort - Target port
+ * @param requestId - Request ID for logging
+ */
+async function handleDirectHttpRequest(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  targetHost: string,
+  targetPort: number,
+  requestId: string,
+): Promise<void> {
+  logger.info(
+    `[HTTP] [${requestId}] Using direct connection for ${targetHost}:${targetPort}`,
+  );
+
+  return new Promise((resolve, reject) => {
+    // Create direct TCP connection to target
+    const targetSocket = net.createConnection(targetPort, targetHost, () => {
+      logger.info(`[HTTP] [${requestId}] Direct connection established`);
+
+      // Forward request headers and body to target
+      let requestHeaders = `${req.method} ${req.url} HTTP/1.1\r\n`;
+
+      // Copy all headers from original request
+      for (const [key, value] of Object.entries(req.headers)) {
+        if (value !== undefined) {
+          requestHeaders += `${key}: ${Array.isArray(value) ? value.join(', ') : value}\r\n`;
+        }
+      }
+
+      // Add Connection: close header to prevent keep-alive
+      requestHeaders += 'Connection: close\r\n\r\n';
+
+      // Send request to target
+      targetSocket.write(requestHeaders);
+
+      // Handle request body if present
+      req.on('data', (chunk) => {
+        if (!targetSocket.destroyed) {
+          targetSocket.write(chunk);
+        }
+      });
+
+      req.on('end', () => {
+        logger.debug(`[HTTP] [${requestId}] Request body forwarded completely`);
+      });
+    });
+
+    // Forward response from target back to client
+    let responseHeaders = '';
+    let headersReceived = false;
+    let responseStarted = false;
+
+    targetSocket.on('data', (chunk) => {
+      if (!headersReceived) {
+        responseHeaders += chunk.toString();
+        const headerEndIndex = responseHeaders.indexOf('\r\n\r\n');
+        if (headerEndIndex !== -1) {
+          headersReceived = true;
+          const headerSection = responseHeaders.substring(0, headerEndIndex);
+          const bodyStart = headerEndIndex + 4;
+
+          // Parse HTTP response status line
+          const statusLine = headerSection.split('\r\n')[0];
+          const statusMatch = statusLine.match(/HTTP\/\d\.\d (\d{3})/);
+          const statusCode = statusMatch ? parseInt(statusMatch[1]) : 200;
+
+          // Parse response headers
+          const headerLines = headerSection.split('\r\n').slice(1);
+          const responseHeadersObj: http.OutgoingHttpHeaders = {};
+
+          for (const line of headerLines) {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const name = line.substring(0, colonIndex).trim();
+              const value = line.substring(colonIndex + 1).trim();
+              responseHeadersObj[name] = value;
+            }
+          }
+
+          // Send response headers to client
+          res.writeHead(statusCode, responseHeadersObj);
+          responseStarted = true;
+
+          // Send remaining body data if any
+          if (chunk.length > bodyStart) {
+            const bodyChunk = chunk.slice(bodyStart);
+            res.write(bodyChunk);
+          }
+        }
+      } else if (responseStarted && !res.destroyed) {
+        res.write(chunk);
+      }
+    });
+
+    targetSocket.on('end', () => {
+      logger.info(`[HTTP] [${requestId}] Direct connection completed`);
+      if (responseStarted && !res.destroyed) {
+        res.end();
+      }
+      resolve();
+    });
+
+    targetSocket.on('error', (error) => {
+      logger.error(
+        `[HTTP] [${requestId}] Direct connection error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      if (!res.headersSent) {
+        res.writeHead(502, { 'Content-Type': 'text/plain' });
+        res.end('Bad Gateway: Direct connection failed');
+      } else if (!res.destroyed) {
+        res.end();
+      }
+      reject(error);
+    });
+
+    // Handle client disconnection
+    const clientSocket = req.socket as net.Socket;
+    clientSocket.on('close', () => {
+      logger.info(`[HTTP] [${requestId}] Client connection closed`);
+      if (!targetSocket.destroyed) {
+        targetSocket.destroy();
+      }
+    });
+
+    clientSocket.on('error', (error) => {
+      logger.warn(
+        `[HTTP] [${requestId}] Client connection error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      if (!targetSocket.destroyed) {
+        targetSocket.destroy();
+      }
+    });
+  });
+}
+
+/**
  * Handle standard HTTP requests by forwarding them through SOCKS5 proxy
  * @param req - HTTP request object
  * @param res - HTTP response object
  * @param socksAddr - SOCKS5 proxy address
+ * @param configWhitelist - Whitelist domains from config
  */
 export async function handleHttpRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   socksAddr: ParsedAddress,
+  configWhitelist: string[],
 ): Promise<void> {
   const requestId = generateRequestId();
 
@@ -60,22 +206,26 @@ export async function handleHttpRequest(
     const targetHost = url.hostname;
     const targetPort = url.port || (url.protocol === 'https:' ? 443 : 80);
 
-    logger.info(
-      `[HTTP] [${requestId}] Forwarding to ${targetHost}:${targetPort} via SOCKS5`,
-    );
-
     // Check if domain is in whitelist for direct connection
-    const configWhitelist: string[] = []; // Empty whitelist since no database
     const useDirectConnection = isDomainInWhitelist(
       targetHost,
       configWhitelist,
     );
 
     if (useDirectConnection) {
-      logger.info(
-        `[HTTP] [${requestId}] Using direct connection for ${targetHost}`,
+      await handleDirectHttpRequest(
+        req,
+        res,
+        targetHost,
+        parseInt(targetPort.toString()),
+        requestId,
       );
+      return;
     }
+
+    logger.info(
+      `[HTTP] [${requestId}] Forwarding to ${targetHost}:${targetPort} via SOCKS5`,
+    );
 
     // Create SOCKS5 connection options
     const socksOptions = {

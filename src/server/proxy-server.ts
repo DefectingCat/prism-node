@@ -17,24 +17,37 @@ export async function startProxy(config: Config): Promise<string> {
   logger.info(`Starting proxy server...`);
   logger.info(`Listen address: ${config.addr}`);
   logger.info(`SOCKS5 address: ${config.socks_addr}`);
+  if (config.whitelist && config.whitelist.length > 0) {
+    logger.info(`Whitelist domains: ${config.whitelist.join(', ')}`);
+  } else {
+    logger.info(`Whitelist: Empty (only internal IPs are direct)`);
+  }
 
   // Create HTTP server that handles standard HTTP requests
   const server = http.createServer((req, res) => {
-    handleHttpRequest(req, res, socksAddr).catch((error) => {
-      logger.error(
-        `Error handling HTTP request:`,
-        error instanceof Error ? error.message : String(error),
-      );
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Internal Server Error');
-      }
-    });
+    handleHttpRequest(req, res, socksAddr, config.whitelist || []).catch(
+      (error) => {
+        logger.error(
+          `Error handling HTTP request:`,
+          error instanceof Error ? error.message : String(error),
+        );
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Internal Server Error');
+        }
+      },
+    );
   });
 
   // Handle HTTPS CONNECT requests for establishing secure tunnels
   server.on('connect', (req, clientSocket: net.Socket, head) => {
-    handleConnect(req, clientSocket, head, socksAddr).catch((error) => {
+    handleConnect(
+      req,
+      clientSocket,
+      head,
+      socksAddr,
+      config.whitelist || [],
+    ).catch((error) => {
       logger.error(
         `Error handling CONNECT:`,
         error instanceof Error ? error.message : String(error),
