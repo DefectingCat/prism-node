@@ -1,4 +1,33 @@
 {
-  "addr": "0.0.0.0:10807",
-  "socks_addr": "0.0.0.0:13659"
+  "addr": "0.0.0.0:10808",
+  "socks_addr": "0.0.0.0:13659",
+
+  "whitelist": [
+    "localhost",
+    "volcengine.com",
+    "*.volcengine.com",
+    "alibaba-inc.com",
+    "*.alibaba-inc.com",
+    "antfin.com",
+    "*.antfin.com",
+    "emas-poc.com",
+    "*.emas-poc.com",
+    "issedu365.com",
+    "*.issedu365.com",
+    "isoftstone.com",
+    "*.isoftstone.com",
+    "aliyun.com",
+    "*.aliyun.com",
+    "lydaas.com",
+    "*.lydaas.com",
+    "aliyun-inc.com",
+    "*.aliyun-inc.com",
+    "volces.com",
+    "*.volces.com",
+    "alicdn.com",
+    "*.alicdn.com",
+    "*.cn",
+    "*.edu.cn",
+    "118.196.80.251"
+  ]
 }

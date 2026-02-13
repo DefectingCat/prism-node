@@ -49,18 +49,27 @@ export function isDomainInWhitelist(
     return true;
   }
 
+  // 检查是否是有效的 IP 地址
+  const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(targetHost) ||
+              targetHost.includes(':');
+
   return whitelist.some((whitelistedDomain) => {
     // 去除首尾空格
     const normalizedWhitelisted = whitelistedDomain.trim().toLowerCase();
     const normalizedTarget = targetHost.trim().toLowerCase();
 
-    // 精确匹配
-    if (normalizedWhitelisted === normalizedTarget) {
+    // IP 地址精确匹配
+    if (isIP && normalizedWhitelisted === normalizedTarget) {
       return true;
     }
 
-    // 通配符匹配（如 *.example.com 匹配 sub.example.com）
-    if (normalizedWhitelisted.startsWith('*.')) {
+    // 域名精确匹配
+    if (!isIP && normalizedWhitelisted === normalizedTarget) {
+      return true;
+    }
+
+    // 通配符匹配（仅适用于域名）
+    if (!isIP && normalizedWhitelisted.startsWith('*.')) {
       const domainSuffix = normalizedWhitelisted.slice(2);
       return (
         normalizedTarget === domainSuffix ||
