@@ -19,6 +19,8 @@ async function handleDirectHttpRequest(
   targetHost: string,
   targetPort: number,
   requestId: string,
+  socksAddr: ParsedAddress, // 添加 SOCKS 代理地址参数
+  configWhitelist: string[], // 添加白名单参数
 ): Promise<void> {
   logger.info(
     `[HTTP] [${requestId}] Using direct connection for ${targetHost}:${targetPort}`,
@@ -29,12 +31,27 @@ async function handleDirectHttpRequest(
     const targetSocket = net.createConnection(targetPort, targetHost, () => {
       logger.info(`[HTTP] [${requestId}] Direct connection established`);
 
-      // Forward request headers and body to target
-      let requestHeaders = `${req.method} ${req.url} HTTP/1.1\r\n`;
+      // 修复请求路径转发问题
+      let path = req.url;
+      if (path && (path.startsWith('http://') || path.startsWith('https://'))) {
+        try {
+          const urlObj = new URL(path);
+          path = urlObj.pathname + urlObj.search + urlObj.hash;
+        } catch {
+          path = '/';
+        }
+      }
 
-      // Copy all headers from original request
+      // 构建请求头
+      let requestHeaders = `${req.method} ${path} HTTP/1.1\r\n`;
+
+      // 修复 Host 头，确保包含正确的端口
+      const hostHeader = targetPort === 80 ? targetHost : `${targetHost}:${targetPort}`;
+      requestHeaders += `Host: ${hostHeader}\r\n`;
+
+      // 复制其他请求头（跳过已处理的 Host 头）
       for (const [key, value] of Object.entries(req.headers)) {
-        if (value !== undefined) {
+        if (value !== undefined && key.toLowerCase() !== 'host') {
           requestHeaders += `${key}: ${Array.isArray(value) ? value.join(', ') : value}\r\n`;
         }
       }
@@ -118,13 +135,23 @@ async function handleDirectHttpRequest(
           error instanceof Error ? error.message : String(error)
         }`,
       );
-      if (!res.headersSent) {
-        res.writeHead(502, { 'Content-Type': 'text/plain' });
-        res.end('Bad Gateway: Direct connection failed');
-      } else if (!res.destroyed) {
-        res.end();
+      // 如果是 EBADF 错误，尝试使用 SOCKS 代理连接
+      if (error instanceof Error && error.message.includes('EBADF')) {
+        logger.warn(`[HTTP] [${requestId}] Direct connection failed with EBADF, falling back to SOCKS5`);
+        // 调用 SOCKS 代理处理函数
+        // 注意：这里需要确保我们没有无限循环
+        // 我们可以通过临时从白名单中移除该域名并再次调用 handleHttpRequest 来实现
+        const tempWhitelist = configWhitelist.filter(domain => domain !== targetHost);
+        handleHttpRequest(req, res, socksAddr, tempWhitelist).catch(reject);
+      } else {
+        if (!res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'text/plain' });
+          res.end('Bad Gateway: Direct connection failed');
+        } else if (!res.destroyed) {
+          res.end();
+        }
+        reject(error);
       }
-      reject(error);
     });
 
     // Handle client disconnection
@@ -219,6 +246,8 @@ export async function handleHttpRequest(
         targetHost,
         parseInt(targetPort.toString()),
         requestId,
+        socksAddr, // 传入 SOCKS 代理地址参数
+        configWhitelist, // 传入白名单参数
       );
       return;
     }
