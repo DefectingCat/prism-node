@@ -10,13 +10,13 @@ import {
 } from '../utils/utils';
 
 /**
- * Handle direct HTTPS CONNECT requests without going through SOCKS5 proxy
- * @param req - HTTP CONNECT request object
- * @param clientSocket - Client socket
- * @param head - First packet of the upgrade stream
- * @param targetHost - Target host
- * @param targetPort - Target port
- * @param requestId - Request ID for logging
+ * 处理不经过 SOCKS5 代理的直接 HTTPS CONNECT 请求
+ * @param req - HTTP CONNECT 请求对象
+ * @param clientSocket - 客户端套接字
+ * @param head - 升级流的第一个数据包
+ * @param targetHost - 目标主机
+ * @param targetPort - 目标端口
+ * @param requestId - 用于日志记录的请求 ID
  */
 async function handleDirectHttpsConnect(
   _req: IncomingMessage,
@@ -31,11 +31,11 @@ async function handleDirectHttpsConnect(
   );
 
   return new Promise((resolve, reject) => {
-    // Create direct TCP connection to target
+    // 创建到目标的直接 TCP 连接
     const targetSocket = net.createConnection(targetPort, targetHost, () => {
       logger.info(`[HTTPS] [${requestId}] Direct tunnel established`);
 
-      // Send 200 Connection established response to client
+      // 向客户端发送 200 Connection established 响应
       if (
         !safeSocketWrite(
           clientSocket,
@@ -48,7 +48,7 @@ async function handleDirectHttpsConnect(
         return;
       }
 
-      // If there's initial data from client, forward it to target
+      // 如果有来自客户端的初始数据，将其转发到目标
       if (head && head.length > 0) {
         logger.debug(
           `[HTTPS] [${requestId}] Forwarding ${head.length} bytes of initial data`,
@@ -56,7 +56,7 @@ async function handleDirectHttpsConnect(
         safeSocketWrite(targetSocket, head, requestId);
       }
 
-      // Set up bidirectional data forwarding between client and target
+      // 设置客户端和目标之间的双向数据转发
       let bytesToClient = 0;
       let bytesToTarget = 0;
 
@@ -74,7 +74,7 @@ async function handleDirectHttpsConnect(
         }
       });
 
-      // Handle connection closures
+      // 处理连接关闭
       clientSocket.on('end', () => {
         logger.info(`[HTTPS] [${requestId}] Client connection closed`);
         if (!targetSocket.destroyed) {
@@ -89,7 +89,7 @@ async function handleDirectHttpsConnect(
         }
       });
 
-      // Handle connection errors
+      // 处理连接错误
       clientSocket.on('error', (error) => {
         logger.warn(
           `[HTTPS] [${requestId}] Client connection error: ${
@@ -112,7 +112,7 @@ async function handleDirectHttpsConnect(
         }
       });
 
-      // Log final transfer amounts when either side closes
+      // 当任一端关闭时记录最终传输量
       const logFinalTransfer = () => {
         logger.info(
           `[HTTPS] [${requestId}] Transfer complete - ↑${formatBytes(bytesToTarget)} ↓${formatBytes(bytesToClient)}`,
@@ -138,11 +138,11 @@ async function handleDirectHttpsConnect(
 }
 
 /**
- * Safely write to a socket, handling potential errors gracefully
- * @param socket - The socket to write to
- * @param data - The data to write
- * @param requestId - Request ID for logging
- * @returns true if write was successful, false otherwise
+ * 安全地写入套接字，优雅地处理潜在错误
+ * @param socket - 要写入的套接字
+ * @param data - 要写入的数据
+ * @param requestId - 用于日志记录的请求 ID
+ * @returns 如果写入成功则返回 true，否则返回 false
  */
 function safeSocketWrite(
   socket: net.Socket,
@@ -169,9 +169,9 @@ function safeSocketWrite(
 }
 
 /**
- * Safely destroy a socket
- * @param socket - The socket to destroy
- * @param requestId - Request ID for logging
+ * 安全地销毁套接字
+ * @param socket - 要销毁的套接字
+ * @param requestId - 用于日志记录的请求 ID
  */
 function safeSocketDestroy(socket: net.Socket, requestId: string): void {
   try {
@@ -186,11 +186,11 @@ function safeSocketDestroy(socket: net.Socket, requestId: string): void {
 }
 
 /**
- * Handle HTTPS CONNECT requests by establishing tunnel through SOCKS5 proxy
- * @param req - HTTP CONNECT request object
- * @param clientSocket - Client socket for the connection
- * @param head - First packet of the upgrade stream (may be empty)
- * @param socksAddr - SOCKS5 proxy address
+ * 通过 SOCKS5 代理建立隧道来处理 HTTPS CONNECT 请求
+ * @param req - HTTP CONNECT 请求对象
+ * @param clientSocket - 连接的客户端套接字
+ * @param head - 升级流的第一个数据包（可能为空）
+ * @param socksAddr - SOCKS5 代理地址
  */
 export async function handleConnect(
   req: IncomingMessage,
@@ -202,7 +202,7 @@ export async function handleConnect(
   const requestId = generateRequestId();
 
   try {
-    // Parse CONNECT request URL (format: hostname:port)
+    // 解析 CONNECT 请求 URL（格式：hostname:port）
     if (!req.url) {
       logger.warn(`[HTTPS] [${requestId}] No URL provided in CONNECT request`);
       clientSocket.destroy();
@@ -223,7 +223,7 @@ export async function handleConnect(
       return;
     }
 
-    // Check if domain is in whitelist for direct connection
+    // 检查域名是否在白名单中以便直连
     const useDirectConnection = isDomainInWhitelist(
       targetHost,
       configWhitelist,
@@ -245,7 +245,7 @@ export async function handleConnect(
       `[HTTPS] [${requestId}] CONNECT ${targetHost}:${targetPort} via SOCKS5`,
     );
 
-    // Create SOCKS5 connection options
+    // 创建 SOCKS5 连接选项
     const socksOptions = {
       proxy: {
         host: socksAddr.host,
@@ -259,11 +259,11 @@ export async function handleConnect(
       },
     };
 
-    // Establish SOCKS5 connection
+    // 建立 SOCKS5 连接
     const socksConnection = await SocksClient.createConnection(socksOptions);
     logger.info(`[HTTPS] [${requestId}] SOCKS5 tunnel established`);
 
-    // Send 200 Connection established response to client
+    // 向客户端发送 200 Connection established 响应
     if (
       !safeSocketWrite(
         clientSocket,
@@ -277,7 +277,7 @@ export async function handleConnect(
 
     const targetSocket = socksConnection.socket;
 
-    // If there's initial data from client, forward it to target
+    // 如果有来自客户端的初始数据，将其转发到目标
     if (head && head.length > 0) {
       logger.debug(
         `[HTTPS] [${requestId}] Forwarding ${head.length} bytes of initial data`,
@@ -285,7 +285,7 @@ export async function handleConnect(
       safeSocketWrite(targetSocket, head, requestId);
     }
 
-    // Set up bidirectional data forwarding between client and target
+    // 设置客户端和目标之间的双向数据转发
     let bytesToClient = 0;
     let bytesToTarget = 0;
 
@@ -303,7 +303,7 @@ export async function handleConnect(
       }
     });
 
-    // Handle connection closures
+    // 处理连接关闭
     clientSocket.on('end', () => {
       logger.info(`[HTTPS] [${requestId}] Client connection closed`);
       if (!targetSocket.destroyed) {
@@ -318,7 +318,7 @@ export async function handleConnect(
       }
     });
 
-    // Handle connection errors
+    // 处理连接错误
     clientSocket.on('error', (error) => {
       logger.warn(
         `[HTTPS] [${requestId}] Client connection error: ${
@@ -341,7 +341,7 @@ export async function handleConnect(
       }
     });
 
-    // Log final transfer amounts when either side closes
+    // 当任一端关闭时记录最终传输量
     const logFinalTransfer = () => {
       logger.info(
         `[HTTPS] [${requestId}] Transfer complete - ↑${formatBytes(bytesToTarget)} ↓${formatBytes(bytesToClient)}`,

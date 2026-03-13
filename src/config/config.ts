@@ -3,17 +3,17 @@ import JSON5 from 'json5';
 import type { Config } from './types';
 
 /**
- * Loads and validates configuration from a JSON file (supports comments and trailing commas)
- * @param configPath - Path to the configuration file
- * @returns Validated configuration object
- * @throws Error if file cannot be read or config is invalid
+ * 从 JSON 文件加载并验证配置（支持注释和尾随逗号）
+ * @param configPath - 配置文件路径
+ * @returns 验证后的配置对象
+ * @throws 如果文件无法读取或配置无效则抛出错误
  */
 export async function loadConfig(configPath: string): Promise<Config> {
   try {
     const content = await fs.readFile(configPath, 'utf-8');
     const config = JSON5.parse(content) as Config;
 
-    // Validate required fields
+    // 验证必填字段
     if (!config.addr || !config.socks_addr) {
       throw new Error("Config must contain 'addr' and 'socks_addr' properties");
     }
@@ -38,7 +38,7 @@ export async function loadConfig(configPath: string): Promise<Config> {
     return config;
   } catch (error) {
     if (error instanceof Error) {
-      throw new Error(`Failed to load config: ${error.message}`);
+      throw new Error(`加载配置失败: ${error.message}`);
     }
     throw error;
   }

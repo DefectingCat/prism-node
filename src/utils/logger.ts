@@ -3,7 +3,7 @@ import DailyRotateFile from 'winston-daily-rotate-file';
 import type { Config } from '../config/types';
 
 /**
- * Winston logger instance for the Prism Node proxy application
+ * Prism Node 代理应用程序的 Winston 日志记录器实例
  */
 export const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -15,7 +15,7 @@ export const logger = winston.createLogger({
   defaultMeta: { service: 'prism-node' },
 });
 
-// Console output in development mode with colors
+// 开发模式下带颜色的控制台输出
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
     new winston.transports.Console({
@@ -28,11 +28,11 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 /**
- * Configures the logger to write logs to files based on the provided configuration
+ * 根据提供的配置将日志写入文件的日志记录器
  */
 export function configureLogger(config: Config): void {
   if (config.log_path) {
-    // Add error log transport
+    // 添加错误日志传输
     logger.add(
       new DailyRotateFile({
         filename: `${config.log_path}/error-%DATE%.log`,
@@ -44,7 +44,7 @@ export function configureLogger(config: Config): void {
       }),
     );
 
-    // Add combined log transport
+    // 添加组合日志传输
     logger.add(
       new DailyRotateFile({
         filename: `${config.log_path}/combined-%DATE%.log`,
@@ -57,5 +57,5 @@ export function configureLogger(config: Config): void {
   }
 }
 
-// Maintain backward compatibility with default export
+// 保持向后兼容的默认导出
 export default logger;

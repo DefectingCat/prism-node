@@ -7,8 +7,8 @@ import logger from '../utils/logger';
 import { parseAddress } from '../utils/utils';
 
 /**
- * Starts the HTTP proxy server supporting both HTTP and HTTPS traffic
- * @param config - Server configuration with listening and SOCKS5 addresses
+ * 启动支持 HTTP 和 HTTPS 流量的 HTTP 代理服务器
+ * @param config - 包含监听地址和 SOCKS5 地址的服务器配置
  */
 export async function startProxy(config: Config): Promise<string> {
   const listenAddr = parseAddress(config.addr);
@@ -23,7 +23,7 @@ export async function startProxy(config: Config): Promise<string> {
     logger.info(`Whitelist: Empty (only internal IPs are direct)`);
   }
 
-  // Create HTTP server that handles standard HTTP requests
+  // 创建处理标准 HTTP 请求的 HTTP 服务器
   const server = http.createServer((req, res) => {
     handleHttpRequest(req, res, socksAddr, config.whitelist || []).catch(
       (error) => {
@@ -39,7 +39,7 @@ export async function startProxy(config: Config): Promise<string> {
     );
   });
 
-  // Handle HTTPS CONNECT requests for establishing secure tunnels
+  // 处理用于建立安全隧道的 HTTPS CONNECT 请求
   server.on('connect', (req, clientSocket: net.Socket, head) => {
     handleConnect(
       req,
@@ -65,7 +65,7 @@ export async function startProxy(config: Config): Promise<string> {
   });
 
   server.on('error', (error: any) => {
-    // Log detailed error information directly to console to bypass logger formatting issues
+    // 直接输出详细错误信息到控制台，以绕过日志格式化问题
     console.error('SERVER ERROR DETAILS:', error);
 
     logger.error(`Server error: ${error.message || String(error)}`);
@@ -73,7 +73,7 @@ export async function startProxy(config: Config): Promise<string> {
       logger.debug(error.stack);
     }
 
-    // Only exit on critical errors that prevent the server from functioning
+    // 仅在阻止服务器运行的关键错误时退出
     if (error.code === 'EADDRINUSE' || error.code === 'EACCES') {
       logger.error(`Critical error: ${error.code} - exiting worker`);
       process.exit(1);

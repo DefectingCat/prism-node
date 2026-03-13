@@ -50,8 +50,9 @@ export function isDomainInWhitelist(
   }
 
   // 检查是否是有效的 IP 地址
-  const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(targetHost) ||
-              targetHost.includes(':');
+  const isIP =
+    /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(targetHost) ||
+    targetHost.includes(':');
 
   return whitelist.some((whitelistedDomain) => {
     // 去除首尾空格
@@ -81,25 +82,25 @@ export function isDomainInWhitelist(
   });
 }
 
-// Global request counter for generating unique request IDs
+// 全局请求计数器，用于生成唯一请求 ID
 let requestCounter = 0;
 
 /**
- * Generates a unique request ID for tracking
+ * 生成唯一的请求 ID 用于追踪
  */
 export function generateRequestId(): string {
   return `${Date.now()}-${++requestCounter}`;
 }
 
 /**
- * Formats current timestamp for logging
+ * 格式化当前时间戳用于日志记录
  */
 export function getTimestamp(): string {
   return new Date().toISOString();
 }
 
 /**
- * Formats bytes to human-readable format
+ * 格式化字节数为人类可读格式
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -110,10 +111,10 @@ export function formatBytes(bytes: number): string {
 }
 
 /**
- * Parses an address string into host and port components
- * @param addr - Address string in format "host:port"
- * @returns Parsed host and port
- * @throws Error if address format is invalid
+ * 解析地址字符串为主机和端口组件
+ * @param addr - 格式为 "host:port" 的地址字符串
+ * @returns 解析后的主机和端口
+ * @throws 如果地址格式无效则抛出错误
  */
 export function parseAddress(addr: string): ParsedAddress {
   const [host, portStr] = addr.split(':');

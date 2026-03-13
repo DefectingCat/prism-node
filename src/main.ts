@@ -18,7 +18,7 @@ async function startWorker(workerConfigPath: string): Promise<void> {
     );
     const config = await loadConfig(configPath);
 
-    // Configure logger based on configuration
+    // 根据配置配置日志记录器
     configureLogger(config);
 
     logger.info(`Worker ${process.pid} configuration loaded successfully`);
@@ -50,7 +50,7 @@ async function startMaster(configPath: string): Promise<void> {
     );
     const config = await loadConfig(configPath);
 
-    // Configure logger based on configuration
+    // 根据配置配置日志记录器
     configureLogger(config);
 
     logger.info(`Master process ${process.pid} starting...`);
@@ -143,7 +143,7 @@ async function main(): Promise<void> {
     .option('config', {
       alias: 'c',
       type: 'string',
-      description: 'Path to configuration file',
+      description: '配置文件路径',
       default: 'config.json',
     })
     .help()

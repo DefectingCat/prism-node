@@ -6,12 +6,12 @@ import logger from '../utils/logger';
 import { generateRequestId, isDomainInWhitelist } from '../utils/utils';
 
 /**
- * Handle direct HTTP requests without going through SOCKS5 proxy
- * @param req - HTTP request object
- * @param res - HTTP response object
- * @param targetHost - Target host
- * @param targetPort - Target port
- * @param requestId - Request ID for logging
+ * 处理不经过 SOCKS5 代理的直接 HTTP 请求
+ * @param req - HTTP 请求对象
+ * @param res - HTTP 响应对象
+ * @param targetHost - 目标主机
+ * @param targetPort - 目标端口
+ * @param requestId - 用于日志记录的请求 ID
  */
 async function handleDirectHttpRequest(
   req: http.IncomingMessage,
@@ -27,7 +27,7 @@ async function handleDirectHttpRequest(
   );
 
   return new Promise((resolve, reject) => {
-    // Create direct TCP connection to target
+    // 创建到目标的直接 TCP 连接
     const targetSocket = net.createConnection(targetPort, targetHost, () => {
       logger.info(`[HTTP] [${requestId}] Direct connection established`);
 
@@ -46,7 +46,8 @@ async function handleDirectHttpRequest(
       let requestHeaders = `${req.method} ${path} HTTP/1.1\r\n`;
 
       // 修复 Host 头，确保包含正确的端口
-      const hostHeader = targetPort === 80 ? targetHost : `${targetHost}:${targetPort}`;
+      const hostHeader =
+        targetPort === 80 ? targetHost : `${targetHost}:${targetPort}`;
       requestHeaders += `Host: ${hostHeader}\r\n`;
 
       // 复制其他请求头（跳过已处理的 Host 头）
@@ -56,13 +57,13 @@ async function handleDirectHttpRequest(
         }
       }
 
-      // Add Connection: close header to prevent keep-alive
+      // 添加 Connection: close 头以防止 keep-alive
       requestHeaders += 'Connection: close\r\n\r\n';
 
-      // Send request to target
+      // 发送请求到目标
       targetSocket.write(requestHeaders);
 
-      // Handle request body if present
+      // 如果有请求体则处理
       req.on('data', (chunk) => {
         if (!targetSocket.destroyed) {
           targetSocket.write(chunk);
@@ -74,7 +75,7 @@ async function handleDirectHttpRequest(
       });
     });
 
-    // Forward response from target back to client
+    // 将目标的响应转发回客户端
     let responseHeaders = '';
     let headersReceived = false;
     let responseStarted = false;
@@ -88,12 +89,12 @@ async function handleDirectHttpRequest(
           const headerSection = responseHeaders.substring(0, headerEndIndex);
           const bodyStart = headerEndIndex + 4;
 
-          // Parse HTTP response status line
+          // 解析 HTTP 响应状态行
           const statusLine = headerSection.split('\r\n')[0];
           const statusMatch = statusLine.match(/HTTP\/\d\.\d (\d{3})/);
           const statusCode = statusMatch ? parseInt(statusMatch[1]) : 200;
 
-          // Parse response headers
+          // 解析响应头
           const headerLines = headerSection.split('\r\n').slice(1);
           const responseHeadersObj: http.OutgoingHttpHeaders = {};
 
@@ -106,11 +107,11 @@ async function handleDirectHttpRequest(
             }
           }
 
-          // Send response headers to client
+          // 向客户端发送响应头
           res.writeHead(statusCode, responseHeadersObj);
           responseStarted = true;
 
-          // Send remaining body data if any
+          // 如果有剩余的 body 数据则发送
           if (chunk.length > bodyStart) {
             const bodyChunk = chunk.slice(bodyStart);
             res.write(bodyChunk);
@@ -137,11 +138,15 @@ async function handleDirectHttpRequest(
       );
       // 如果是 EBADF 错误，尝试使用 SOCKS 代理连接
       if (error instanceof Error && error.message.includes('EBADF')) {
-        logger.warn(`[HTTP] [${requestId}] Direct connection failed with EBADF, falling back to SOCKS5`);
+        logger.warn(
+          `[HTTP] [${requestId}] Direct connection failed with EBADF, falling back to SOCKS5`,
+        );
         // 调用 SOCKS 代理处理函数
         // 注意：这里需要确保我们没有无限循环
         // 我们可以通过临时从白名单中移除该域名并再次调用 handleHttpRequest 来实现
-        const tempWhitelist = configWhitelist.filter(domain => domain !== targetHost);
+        const tempWhitelist = configWhitelist.filter(
+          (domain) => domain !== targetHost,
+        );
         handleHttpRequest(req, res, socksAddr, tempWhitelist).catch(reject);
       } else {
         if (!res.headersSent) {
@@ -154,7 +159,7 @@ async function handleDirectHttpRequest(
       }
     });
 
-    // Handle client disconnection
+    // 处理客户端断开连接
     const clientSocket = req.socket as net.Socket;
     clientSocket.on('close', () => {
       logger.info(`[HTTP] [${requestId}] Client connection closed`);
@@ -177,11 +182,11 @@ async function handleDirectHttpRequest(
 }
 
 /**
- * Handle standard HTTP requests by forwarding them through SOCKS5 proxy
- * @param req - HTTP request object
- * @param res - HTTP response object
- * @param socksAddr - SOCKS5 proxy address
- * @param configWhitelist - Whitelist domains from config
+ * 通过 SOCKS5 代理转发来处理标准 HTTP 请求
+ * @param req - HTTP 请求对象
+ * @param res - HTTP 响应对象
+ * @param socksAddr - SOCKS5 代理地址
+ * @param configWhitelist - 配置中的白名单域名
  */
 export async function handleHttpRequest(
   req: http.IncomingMessage,
@@ -192,7 +197,7 @@ export async function handleHttpRequest(
   const requestId = generateRequestId();
 
   try {
-    // Parse the request URL
+    // 解析请求 URL
     if (!req.url) {
       logger.warn(`[HTTP] [${requestId}] No URL provided`);
       res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -204,9 +209,9 @@ export async function handleHttpRequest(
     try {
       url = new URL(req.url);
     } catch {
-      // Handle relative URLs by attempting to construct absolute URL using Host header
-      // This commonly happens when a client connects directly to the proxy (e.g. GET /)
-      // or sends a request without the full scheme
+      // 通过使用 Host 头尝试构造绝对 URL 来处理相对 URL
+      // 这通常发生在客户端直接连接到代理（例如 GET /）
+      // 或发送没有完整协议的请求时
       const host = req.headers.host;
       if (host) {
         try {
@@ -233,7 +238,7 @@ export async function handleHttpRequest(
     const targetHost = url.hostname;
     const targetPort = url.port || (url.protocol === 'https:' ? 443 : 80);
 
-    // Check if domain is in whitelist for direct connection
+    // 检查域名是否在白名单中以便直连
     const useDirectConnection = isDomainInWhitelist(
       targetHost,
       configWhitelist,
@@ -256,7 +261,7 @@ export async function handleHttpRequest(
       `[HTTP] [${requestId}] Forwarding to ${targetHost}:${targetPort} via SOCKS5`,
     );
 
-    // Create SOCKS5 connection options
+    // 创建 SOCKS5 连接选项
     const socksOptions = {
       proxy: {
         host: socksAddr.host,
@@ -270,31 +275,31 @@ export async function handleHttpRequest(
       },
     };
 
-    // Establish SOCKS5 connection
+    // 建立 SOCKS5 连接
     const socksConnection = await SocksClient.createConnection(socksOptions);
     logger.info(`[HTTP] [${requestId}] SOCKS5 connection established`);
 
-    // Set up bidirectional data forwarding
+    // 设置双向数据转发
     const clientSocket = req.socket as net.Socket;
     const targetSocket = socksConnection.socket;
 
-    // Forward request headers and body to target
+    // 将请求头和请求体转发到目标
     let requestHeaders = `${req.method} ${req.url} HTTP/1.1\r\n`;
 
-    // Copy all headers from original request
+    // 复制原始请求的所有请求头
     for (const [key, value] of Object.entries(req.headers)) {
       if (value !== undefined) {
         requestHeaders += `${key}: ${Array.isArray(value) ? value.join(', ') : value}\r\n`;
       }
     }
 
-    // Add Connection: close header to prevent keep-alive
+    // 添加 Connection: close 头以防止 keep-alive
     requestHeaders += 'Connection: close\r\n\r\n';
 
-    // Send request to target
+    // 发送请求到目标
     targetSocket.write(requestHeaders);
 
-    // Handle request body if present
+    // 如果有请求体则处理
     req.on('data', (chunk) => {
       if (!targetSocket.destroyed) {
         targetSocket.write(chunk);
@@ -305,7 +310,7 @@ export async function handleHttpRequest(
       logger.debug(`[HTTP] [${requestId}] Request body forwarded completely`);
     });
 
-    // Forward response from target back to client
+    // 将目标的响应转发回客户端
     let responseHeaders = '';
     let headersReceived = false;
     let responseStarted = false;
@@ -319,12 +324,12 @@ export async function handleHttpRequest(
           const headerSection = responseHeaders.substring(0, headerEndIndex);
           const bodyStart = headerEndIndex + 4;
 
-          // Parse HTTP response status line
+          // 解析 HTTP 响应状态行
           const statusLine = headerSection.split('\r\n')[0];
           const statusMatch = statusLine.match(/HTTP\/\d\.\d (\d{3})/);
           const statusCode = statusMatch ? parseInt(statusMatch[1]) : 200;
 
-          // Parse response headers
+          // 解析响应头
           const headerLines = headerSection.split('\r\n').slice(1);
           const responseHeadersObj: http.OutgoingHttpHeaders = {};
 
@@ -337,11 +342,11 @@ export async function handleHttpRequest(
             }
           }
 
-          // Send response headers to client
+          // 向客户端发送响应头
           res.writeHead(statusCode, responseHeadersObj);
           responseStarted = true;
 
-          // Send remaining body data if any
+          // 如果有剩余的 body 数据则发送
           if (chunk.length > bodyStart) {
             const bodyChunk = chunk.slice(bodyStart);
             res.write(bodyChunk);
@@ -373,7 +378,7 @@ export async function handleHttpRequest(
       }
     });
 
-    // Handle client disconnection
+    // 处理客户端断开连接
     clientSocket.on('close', () => {
       logger.info(`[HTTP] [${requestId}] Client connection closed`);
       if (!targetSocket.destroyed) {
