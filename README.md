@@ -1,59 +1,22 @@
 # Prism Node
 
-A lightweight HTTP/HTTPS proxy server that forwards traffic to a SOCKS5 proxy with powerful visualization and statistics capabilities.
+A lightweight HTTP/HTTPS proxy server that forwards traffic to a SOCKS5 proxy.
 
 ## Overview
 
-Prism Node is a complete proxy server solution that integrates real-time statistics, log streaming, and a modern web interface. Through intuitive visualization charts and flexible query parameters, it helps you fully understand the operational status and traffic of your proxy service.
+Prism Node is a simple yet powerful proxy server solution built with Node.js and TypeScript. It supports both HTTP and HTTPS traffic forwarding through a SOCKS5 proxy with multi-process load balancing.
 
-## Key Features
+## Features
 
 ### Core Proxy Functions
 - **Dual Protocol Support**: Handles both HTTP and HTTPS traffic
 - **SOCKS5 Integration**: Forwards all proxy requests to a configured SOCKS5 server
-- **Graceful Shutdown**: Properly cleans up resources on exit
-- **Comprehensive Logging**: Based on Winston logging system
-
-### Real-time Statistics Dashboard
-
-#### 📊 Data Statistics Display
-- **Total Requests**: Real-time display of total requests processed by the proxy service
-- **Traffic Statistics**: 
-  - Total upload traffic (automatic unit conversion: B/KB/MB/GB/TB/PB)
-  - Total download traffic (intelligent formatting display)
-- **Performance Metrics**: Average response time (millisecond level)
-- **Active Connections**: Real-time monitoring of current active connections
-- **Top Hosts**: Statistics of top 10 hosts by visit count and traffic usage
-- **Recent Records**: Latest proxy request details (including type, target, duration, status)
-
-#### 📈 Visualization Charts
-- **Bar Charts**:
-  - Top hosts visit count comparison
-  - Response time trend analysis
-- **Pie Charts**: Upload/download traffic ratio visualization
-- Based on MUI X-Charts with interactive data exploration support
-
-#### 🔍 Flexible Query Parameters
-- **Time Range Filter**: Date range picker (DateRangePicker) for precise statistics filtering
-- **Pagination Control**: 
-  - Page number setting
-  - Page size editable dropdown (supports preset values: 10/20/50/100 or custom input)
-- **Request Type Filter**: Filter HTTP/HTTPS or all requests
-- **Host Filter**: Precise query by target host name
-- Parameters take effect immediately and automatically trigger data refresh
-
-#### ⚡ Auto Refresh Function
-- **Toggle Control**: One-click enable/disable auto refresh
-- **Custom Refresh Interval**: 
-  - Supports millisecond-level settings (minimum 100ms)
-  - Real-time input validation and application
-  - Takes effect immediately when pressing Enter or losing focus
-- Based on SWR's intelligent data fetching to reduce unnecessary requests
-
-### Real-time Log Streaming
-- **WebSocket Real-time Push**: Receive real-time logs via `/api/logs/stream`
-- **JSON Format**: Contains timestamp, log level, message content and other metadata
-- **Multi-level Logs**: Supports info, error, warn, debug levels
+- **Multi-Process Load Balancing**: Automatically creates worker processes based on CPU cores for better performance
+- **Graceful Shutdown**: Properly cleans up resources on exit (SIGTERM/SIGINT)
+- **Domain Whitelist**: Support direct connections for specific domains (bypass SOCKS5)
+- **Request Tracking**: Each request has a unique ID for logging and debugging
+- **Transfer Statistics**: Records upload/download bytes for each connection
+- **Comprehensive Logging**: Winston-based logging system with file rotation support
 
 ## Installation
 
@@ -64,7 +27,6 @@ Prism Node is a complete proxy server solution that integrates real-time statist
 ### Install Dependencies
 
 ```bash
-# Install all dependencies (backend + frontend)
 pnpm install
 ```
 
@@ -80,22 +42,36 @@ cp config.example.json config.json
 
 ```json
 {
-  "addr": "127.0.0.1:10808",      // Proxy server listening address
-  "socks_addr": "127.0.0.1:13659", // SOCKS5 server address
-  "http_addr": "127.0.0.1:3000"   // Web interface access address
+  "addr": "127.0.0.1:10808",
+  "socks_addr": "127.0.0.1:13659",
+  "log_path": "./logs",
+  "whitelist": ["example.com", "*.google.com"]
 }
 ```
+
+### Configuration Options
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `addr` | Proxy server listening address | Yes |
+| `socks_addr` | SOCKS5 server address | Yes |
+| `log_path` | Log file path (empty string to disable file logging) | No |
+| `whitelist` | Domain whitelist for direct connections (bypass SOCKS5) | No |
+
+### Whitelist Patterns
+
+The whitelist supports exact domain matching and wildcard patterns:
+
+- Exact match: `"example.com"` matches `example.com`
+- Wildcard: `"*.google.com"` matches `mail.google.com`, `www.google.com`, etc.
 
 ## Usage
 
 ### Development Mode
 
 ```bash
-# Start backend and frontend development servers
 pnpm run dev
 ```
-
-Then visit `http://127.0.0.1:3000` to view the web interface.
 
 ### Production Build
 
@@ -107,122 +83,55 @@ pnpm run build
 pnpm run start
 ```
 
-### Build Executable
-
-```bash
-pnpm run build:bin
-```
-
-This will create a standalone executable named `prism-node`.
-
-## API Endpoints
-
-### Statistics API
-- `GET /api/stats` - Get proxy statistics data
-  - Supports query parameters: `startTime`, `endTime`, `page`, `pageSize`, `type`, `host`
-  - Returns: total requests, traffic statistics, top hosts, recent records, etc.
-
-### Real-time Log Streaming
-- `WS /api/logs/stream` - WebSocket log streaming endpoint
-
-Connect to the WebSocket endpoint to receive real-time log streams:
-
-```bash
-# Using the provided test script
-node scripts/test-websocket.mjs
-
-# Or connect directly with any WebSocket client
-ws://127.0.0.1:3000/api/logs/stream
-```
-
-The log stream endpoint broadcasts all application logs in JSON format, including:
-- Log level (info, error, warn, debug)
-- Timestamp
-- Message content
-- Additional metadata
-
-**Example log message:**
-```json
-{
-  "timestamp": "2025-12-25T11:00:00.000Z",
-  "level": "info",
-  "message": "HTTP Request",
-  "service": "prism-node",
-  "method": "GET",
-  "url": "http://127.0.0.1:3000/api/stats"
-}
-```
-
-## Tech Stack
-
-### Backend
-- **Node.js**: Runtime environment
-- **TypeScript**: Type safety
-- **Hono**: High-performance HTTP server framework
-- **Winston**: Logging
-- **SQLite3**: Statistics data persistent storage
-- **Socks**: SOCKS5 client library
-- **WebSocket (ws)**: Real-time log streaming
-
-### Frontend
-- **React 19**: Modern UI framework
-- **Material-UI (MUI)**: Component library
-  - MUI X-Charts: Chart visualization (bar charts, pie charts)
-  - MUI X-Date-Pickers Pro: Date range picker
-- **SWR**: Data fetching and caching (supports auto refresh)
-- **React Router**: Routing management
-- **React-i18next**: Internationalization support (Chinese/English switching)
-- **Axios**: HTTP client
-- **Day.js**: Date handling
-- **Vite**: Fast development and build tool
-
 ## Project Structure
 
 ```
 prism-node/
-├── src/                 # Backend source code
-│   ├── config/          # Configuration loading
-│   ├── handlers/        # Request handlers
-│   ├── server/          # Server implementations
-│   └── utils/           # Utility functions
-├── frontend/            # Frontend source code
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── pages/       # Page components (Home, Stats, Logs, etc.)
-│   │   ├── i18n/        # Internationalization config
-│   │   └── utils/       # Utility functions
-│   └── package.json     # Frontend dependencies
-├── scripts/             # Build and test scripts
-├── config.example.json  # Configuration example
-└── package.json         # Backend dependencies and scripts
+├── src/
+│   ├── config/              # Configuration loading
+│   │   ├── config.ts        # Config loader
+│   │   └── types.ts         # Type definitions
+│   ├── handlers/            # Request handlers
+│   │   ├── http-handler.ts    # HTTP request handler
+│   │   └── connect-handler.ts # HTTPS CONNECT tunnel
+│   ├── server/              # Server implementations
+│   │   └── proxy-server.ts    # HTTP/HTTPS proxy server
+│   └── utils/               # Utilities
+│       ├── logger.ts        # Winston logger
+│       ├── utils.ts         # Helper functions
+│       └── whitelist.ts    # Domain whitelist
+├── config.example.json      # Configuration template
+└── package.json             # Dependencies and scripts
 ```
 
-## Performance Testing
+## Tech Stack
 
-Use the built-in stress testing script to test API performance:
+- **Node.js**: Runtime environment
+- **TypeScript**: Type safety
+- **Socks**: SOCKS5 client library
+- **Winston**: Logging system with daily rotation
+- **Yargs**: Command-line argument parsing
+- **Biome**: Code formatting and linting
 
-```bash
-node benches/api-stress-test.mjs -u http://localhost:3000/api/stats -c 10 -r 1000
+## Architecture
+
+### Multi-Process Model
+
+The application uses Node.js Cluster module to:
+1. Master process manages worker processes
+2. Fork worker processes for each CPU core
+3. Handle graceful shutdown
+4. Auto-restart crashed workers (configurable)
+
+### Proxy Flow
+
+```
+Client -> HTTP/HTTPS Request -> Prism Node -> SOCKS5 Proxy -> Target Server
+                                    |
+                              [Optional: Direct connection for whitelist domains]
 ```
 
-Parameter description:
-- `-u`: API address
-- `-c`: Concurrency
-- `-r`: Total requests
-
-## Screenshots
-
-> Note: The web interface supports Chinese/English switching and dark/light theme switching
-
-### Real-time Statistics Dashboard
-The statistics dashboard displays key metrics of the proxy service, including total requests, traffic statistics, average response time, etc. Bar charts and pie charts intuitively show top host visits and traffic distribution.
-
-### Flexible Query Parameters
-Supports multi-dimensional filtering of statistics data by time range, request type, host name, etc., and allows custom refresh intervals for real-time monitoring.
-
-## Development
-
-### Code Formatting and Checking
+## Code Quality
 
 ```bash
 # Format and fix code
@@ -231,21 +140,9 @@ pnpm run fix
 # Format only
 pnpm run format
 
-# Lint check only
-pnpm run lint
+# Lint check
+pnpm run lint:check
 ```
-
-### Frontend Development
-
-```bash
-cd frontend
-pnpm run dev  # Start frontend development server
-pnpm run build  # Build frontend production version
-```
-
-## Contributing
-
-Issues and Pull Requests are welcome!
 
 ## License
 
