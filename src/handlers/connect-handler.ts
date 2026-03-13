@@ -3,11 +3,8 @@ import * as net from 'node:net';
 import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
-import {
-  formatBytes,
-  generateRequestId,
-  isDomainInWhitelist,
-} from '../utils/utils';
+import { formatBytes, generateRequestId } from '../utils/utils';
+import { isDomainInWhitelist } from '../utils/whitelist';
 
 /**
  * 处理不经过 SOCKS5 代理的直接 HTTPS CONNECT 请求
@@ -197,7 +194,6 @@ export async function handleConnect(
   clientSocket: net.Socket,
   head: Buffer,
   socksAddr: ParsedAddress,
-  configWhitelist: string[],
 ): Promise<void> {
   const requestId = generateRequestId();
 
@@ -224,10 +220,7 @@ export async function handleConnect(
     }
 
     // 检查域名是否在白名单中以便直连
-    const useDirectConnection = isDomainInWhitelist(
-      targetHost,
-      configWhitelist,
-    );
+    const useDirectConnection = isDomainInWhitelist(targetHost);
 
     if (useDirectConnection) {
       await handleDirectHttpsConnect(

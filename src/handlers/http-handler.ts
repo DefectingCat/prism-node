@@ -3,7 +3,12 @@ import * as net from 'node:net';
 import { SocksClient } from 'socks';
 import type { ParsedAddress } from '../config/types';
 import logger from '../utils/logger';
-import { generateRequestId, isDomainInWhitelist } from '../utils/utils';
+import { generateRequestId } from '../utils/utils';
+import {
+  excludeFromWhitelist,
+  isDomainInWhitelist,
+  resetWhitelist,
+} from '../utils/whitelist';
 
 /**
  * 处理不经过 SOCKS5 代理的直接 HTTP 请求
@@ -19,8 +24,7 @@ async function handleDirectHttpRequest(
   targetHost: string,
   targetPort: number,
   requestId: string,
-  socksAddr: ParsedAddress, // 添加 SOCKS 代理地址参数
-  configWhitelist: string[], // 添加白名单参数
+  socksAddr: ParsedAddress,
 ): Promise<void> {
   logger.info(
     `[HTTP] [${requestId}] Using direct connection for ${targetHost}:${targetPort}`,
@@ -141,13 +145,9 @@ async function handleDirectHttpRequest(
         logger.warn(
           `[HTTP] [${requestId}] Direct connection failed with EBADF, falling back to SOCKS5`,
         );
-        // 调用 SOCKS 代理处理函数
-        // 注意：这里需要确保我们没有无限循环
-        // 我们可以通过临时从白名单中移除该域名并再次调用 handleHttpRequest 来实现
-        const tempWhitelist = configWhitelist.filter(
-          (domain) => domain !== targetHost,
-        );
-        handleHttpRequest(req, res, socksAddr, tempWhitelist).catch(reject);
+        excludeFromWhitelist(targetHost);
+        handleHttpRequest(req, res, socksAddr).catch(reject);
+        resetWhitelist();
       } else {
         if (!res.headersSent) {
           res.writeHead(502, { 'Content-Type': 'text/plain' });
@@ -186,13 +186,11 @@ async function handleDirectHttpRequest(
  * @param req - HTTP 请求对象
  * @param res - HTTP 响应对象
  * @param socksAddr - SOCKS5 代理地址
- * @param configWhitelist - 配置中的白名单域名
  */
 export async function handleHttpRequest(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   socksAddr: ParsedAddress,
-  configWhitelist: string[],
 ): Promise<void> {
   const requestId = generateRequestId();
 
@@ -239,10 +237,7 @@ export async function handleHttpRequest(
     const targetPort = url.port || (url.protocol === 'https:' ? 443 : 80);
 
     // 检查域名是否在白名单中以便直连
-    const useDirectConnection = isDomainInWhitelist(
-      targetHost,
-      configWhitelist,
-    );
+    const useDirectConnection = isDomainInWhitelist(targetHost);
 
     if (useDirectConnection) {
       await handleDirectHttpRequest(
@@ -251,8 +246,7 @@ export async function handleHttpRequest(
         targetHost,
         parseInt(targetPort.toString()),
         requestId,
-        socksAddr, // 传入 SOCKS 代理地址参数
-        configWhitelist, // 传入白名单参数
+        socksAddr,
       );
       return;
     }

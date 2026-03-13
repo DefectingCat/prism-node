@@ -5,6 +5,7 @@ import { handleConnect } from '../handlers/connect-handler';
 import { handleHttpRequest } from '../handlers/http-handler';
 import logger from '../utils/logger';
 import { parseAddress } from '../utils/utils';
+import { initializeWhitelist } from '../utils/whitelist';
 
 /**
  * 启动支持 HTTP 和 HTTPS 流量的 HTTP 代理服务器
@@ -13,6 +14,8 @@ import { parseAddress } from '../utils/utils';
 export async function startProxy(config: Config): Promise<string> {
   const listenAddr = parseAddress(config.addr);
   const socksAddr = parseAddress(config.socks_addr);
+
+  initializeWhitelist(config.whitelist);
 
   logger.info(`Starting proxy server...`);
   logger.info(`Listen address: ${config.addr}`);
@@ -25,29 +28,35 @@ export async function startProxy(config: Config): Promise<string> {
 
   // 创建处理标准 HTTP 请求的 HTTP 服务器
   const server = http.createServer((req, res) => {
-    handleHttpRequest(req, res, socksAddr, config.whitelist || []).catch(
-      (error) => {
-        logger.error(
-          `Error handling HTTP request:`,
-          error instanceof Error ? error.message : String(error),
-        );
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end('Internal Server Error');
-        }
-      },
-    );
+    handleHttpRequest(req, res, socksAddr).catch((error) => {
+      logger.error(
+        `Error handling HTTP request:`,
+        error instanceof Error ? error.message : String(error),
+      );
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Internal Server Error');
+      }
+    });
+  });
+
+  // Socket 超时配置，防止资源泄漏
+  server.timeout = 60000;
+  server.keepAliveTimeout = 30000;
+  server.headersTimeout = 15000;
+
+  // 处理每个新连接的超时
+  server.on('connection', (socket: net.Socket) => {
+    socket.setTimeout(60000);
+    socket.on('timeout', () => {
+      logger.warn(`Socket timeout, destroying connection`);
+      socket.destroy();
+    });
   });
 
   // 处理用于建立安全隧道的 HTTPS CONNECT 请求
   server.on('connect', (req, clientSocket: net.Socket, head) => {
-    handleConnect(
-      req,
-      clientSocket,
-      head,
-      socksAddr,
-      config.whitelist || [],
-    ).catch((error) => {
+    handleConnect(req, clientSocket, head, socksAddr).catch((error) => {
       logger.error(
         `Error handling CONNECT:`,
         error instanceof Error ? error.message : String(error),
