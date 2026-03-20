@@ -14,7 +14,7 @@ Prism Node is a lightweight HTTP/HTTPS proxy server that forwards traffic to a S
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Copy configuration file
 cp config.example.json config.json
@@ -26,33 +26,35 @@ cp config.example.json config.json
 
 ```bash
 # Start development server
-pnpm run dev
+bun run dev
 ```
 
 ### Production
 
 ```bash
-# Build the project
-pnpm run build
+# Build and run production version
+bun run build
+bun run start
 
-# Run production version
-pnpm run start
+# Or build standalone binary
+bun run build:bin
+bun run start:bin
 ```
 
 ## Code Quality
 
 ```bash
 # Format and fix code
-pnpm run fix
+bun run fix
 
 # Format only
-pnpm run format
+bun run format
 
 # Lint check
-pnpm run lint:check
+bun run lint:check
 
 # Lint and fix
-pnpm run lint
+bun run lint
 ```
 
 ## Project Structure
@@ -81,7 +83,7 @@ prism-node/
 
 ### Backend Stack
 
-- **Node.js**: Runtime environment
+- **Bun**: Runtime environment (also used for building standalone binaries)
 - **Node.js Cluster**: Multi-process load balancing
 - **Winston**: Logging system with file rotation
 - **SOCKS**: SOCKS5 proxy client
@@ -138,8 +140,14 @@ The whitelist supports:
 ## Testing
 
 ```bash
-# Run in development with hot reload
-pnpm run dev
+# Run tests
+bun run test
+
+# Run tests once
+bun run test:run
+
+# Run tests with coverage
+bun run test:coverage
 ```
 
 ## Code Style
