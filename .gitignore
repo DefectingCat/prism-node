@@ -4,6 +4,8 @@ dist/
 .DS_Store
 .env
 config.json
+config.*.json
+coverage/
 **/*/*.db
 logs/
 .claude/
