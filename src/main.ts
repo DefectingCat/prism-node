@@ -1,4 +1,5 @@
 import cluster from 'node:cluster';
+import * as fs from "node:fs/promises";
 import * as os from 'node:os';
 import * as path from 'node:path';
 import yargs from 'yargs';
@@ -6,6 +7,13 @@ import { hideBin } from 'yargs/helpers';
 import { loadConfig } from './config/config';
 import { startProxy } from './server/proxy-server';
 import { configureLogger, logger } from './utils/logger';
+
+const DEFAULT_CONFIG = {
+  addr: "127.0.0.1:10808",
+  socks_addr: "127.0.0.1:13659",
+  log_path: "./logs",
+  whitelist: ["example.com", "*.google.com"],
+};
 
 /**
  * 工作进程入口 - 启动代理服务器
@@ -135,23 +143,46 @@ async function startMaster(configPath: string): Promise<void> {
 }
 
 /**
+ * 生成默认配置文件
+ */
+async function generateConfig(): Promise<void> {
+  const outputPath = path.join(process.cwd(), 'config.example.json');
+  const content = JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n';
+  await fs.writeFile(outputPath, content, 'utf-8');
+  console.log(`Default configuration file generated: ${outputPath}`);
+  console.log(`You can edit it and rename to config.json, or use: cp ${outputPath} config.json`);
+}
+
+/**
  * Main entry point - 根据进程角色启动主进程或工作进程
  */
 async function main(): Promise<void> {
   // 解析 CLI 参数
   const argv = await yargs(hideBin(process.argv))
-    .option('config', {
-      alias: 'c',
-      type: 'string',
-      description: '配置文件路径',
-      default: 'config.json',
+    .option("config", {
+      alias: "c",
+      type: "string",
+      description: "配置文件路径",
+      default: "config.json",
+    })
+    .option("generate-config", {
+      alias: "g",
+      type: "boolean",
+      description: "生成默认配置文件",
+      default: false,
     })
     .help()
-    .alias('help', 'h')
+    .alias("help", "h")
     .parse();
 
   // 处理帮助请求 - 如果请求帮助，直接退出
   if (argv.help) {
+    process.exit(0);
+  }
+
+  // 处理生成配置文件
+  if (argv["generate-config"]) {
+    await generateConfig();
     process.exit(0);
   }
 
