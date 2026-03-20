@@ -32,6 +32,13 @@ if (process.env.NODE_ENV !== 'production') {
  */
 export function configureLogger(config: Config): void {
   if (config.log_path) {
+    const hasFileTransports = logger.transports.some(
+      (t) => t instanceof DailyRotateFile,
+    );
+    if (hasFileTransports) {
+      return;
+    }
+
     // 添加错误日志传输
     logger.add(
       new DailyRotateFile({

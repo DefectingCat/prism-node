@@ -86,8 +86,8 @@ async function startMaster(configPath: string): Promise<void> {
       // 如果工作进程异常退出，自动重启一个新的工作进程
       if (code !== 0 || signal) {
         logger.info('Starting a new worker to replace the crashed one...');
-        // const newWorker = cluster.fork();
-        // logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
+        const newWorker = cluster.fork();
+        logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
       }
     });
 

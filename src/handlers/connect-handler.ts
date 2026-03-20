@@ -23,7 +23,7 @@ async function handleDirectHttpsConnect(
   targetPort: number,
   requestId: string,
 ): Promise<void> {
-  logger.info(
+  logger.debug(
     `[HTTPS] [${requestId}] Using direct connection for ${targetHost}:${targetPort}`,
   );
 
@@ -234,7 +234,7 @@ export async function handleConnect(
       return;
     }
 
-    logger.info(
+    logger.debug(
       `[HTTPS] [${requestId}] CONNECT ${targetHost}:${targetPort} via SOCKS5`,
     );
 

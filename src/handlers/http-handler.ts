@@ -26,7 +26,7 @@ async function handleDirectHttpRequest(
   requestId: string,
   socksAddr: ParsedAddress,
 ): Promise<void> {
-  logger.info(
+  logger.debug(
     `[HTTP] [${requestId}] Using direct connection for ${targetHost}:${targetPort}`,
   );
 
@@ -251,7 +251,7 @@ export async function handleHttpRequest(
       return;
     }
 
-    logger.info(
+    logger.debug(
       `[HTTP] [${requestId}] Forwarding to ${targetHost}:${targetPort} via SOCKS5`,
     );
 
@@ -400,5 +400,8 @@ export async function handleHttpRequest(
       res.writeHead(502, { 'Content-Type': 'text/plain' });
       res.end('Bad Gateway: SOCKS5 connection failed');
     }
+  } finally {
+    const clientSocket = req.socket as net.Socket;
+    clientSocket.removeAllListeners();
   }
 }

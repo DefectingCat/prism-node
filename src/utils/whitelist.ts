@@ -22,12 +22,14 @@ export function isPrivateIP(ip: string): boolean {
 
 let whitelistSet: Set<string> = new Set();
 let wildcardSuffixes: string[] = [];
+let tldWildcards: Map<string, boolean> = new Map();
 let originalWhitelist: Set<string> = new Set();
 let originalWildcards: string[] = [];
 
 export function initializeWhitelist(whitelist: string[] | undefined): void {
   whitelistSet = new Set();
   wildcardSuffixes = [];
+  tldWildcards = new Map();
   originalWhitelist = new Set();
   originalWildcards = [];
 
@@ -41,8 +43,12 @@ export function initializeWhitelist(whitelist: string[] | undefined): void {
     }
     const normalized = domain.trim().toLowerCase();
     if (normalized.startsWith('*.')) {
-      wildcardSuffixes.push(normalized.slice(2));
-      originalWildcards.push(normalized.slice(2));
+      const suffix = normalized.slice(2);
+      wildcardSuffixes.push(suffix);
+      originalWildcards.push(suffix);
+      if (!suffix.includes('.')) {
+        tldWildcards.set(suffix, true);
+      }
     } else {
       whitelistSet.add(normalized);
       originalWhitelist.add(normalized);
@@ -56,11 +62,18 @@ export function excludeFromWhitelist(host: string): void {
   wildcardSuffixes = wildcardSuffixes.filter(
     (s) => s !== normalized && !normalized.endsWith(`.${s}`),
   );
+  tldWildcards.delete(normalized);
 }
 
 export function resetWhitelist(): void {
   whitelistSet = new Set(originalWhitelist);
   wildcardSuffixes = [...originalWildcards];
+  tldWildcards = new Map();
+  for (const suffix of originalWildcards) {
+    if (!suffix.includes('.')) {
+      tldWildcards.set(suffix, true);
+    }
+  }
 }
 
 export function isDomainInWhitelist(targetHost: string): boolean {
@@ -71,6 +84,11 @@ export function isDomainInWhitelist(targetHost: string): boolean {
   }
 
   if (whitelistSet.has(normalized)) {
+    return true;
+  }
+
+  const parts = normalized.split('.');
+  if (parts.length >= 2 && tldWildcards.has(parts[parts.length - 1])) {
     return true;
   }
 
