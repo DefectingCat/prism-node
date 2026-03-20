@@ -9,7 +9,7 @@
     "build": "tsc",
     "build:bin": "bun build src/main.ts --compile --outfile prism-node",
     "dev": "tsx src/main.ts -c ./config-dev.json",
-    "start": "node dist/main.js",
+    "start": "bun dist/main.js",
     "start:bin": "./prism-node",
     "watch": "tsc --watch",
     "fix": "biome format --write . && biome lint --write . && biome check --write .",

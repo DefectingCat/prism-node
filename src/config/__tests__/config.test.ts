@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as fs from 'node:fs/promises';
 import { loadConfig } from '../config';
 
 const mockReadFile = vi.fn();
