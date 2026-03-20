@@ -148,9 +148,18 @@ async function startMaster(configPath: string): Promise<void> {
 async function generateConfig(): Promise<void> {
   const outputPath = path.join(process.cwd(), 'config.example.json');
   const content = JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n';
-  await fs.writeFile(outputPath, content, 'utf-8');
-  console.log(`Default configuration file generated: ${outputPath}`);
-  console.log(`You can edit it and rename to config.json, or use: cp ${outputPath} config.json`);
+  try {
+    await fs.writeFile(outputPath, content, "utf-8");
+    console.log(`Default configuration file generated: ${outputPath}`);
+    console.log(
+      `You can edit it and rename to config.json, or use: cp ${outputPath} config.json`,
+    );
+  } catch (error) {
+    console.error(
+      `Failed to generate configuration file: ${(error as Error).message}`,
+    );
+    process.exit(1);
+  }
 }
 
 /**
