@@ -21,13 +21,13 @@ Prism Node is a simple yet powerful proxy server solution built with Node.js and
 ## Installation
 
 ### Prerequisites
-- Node.js >= 18
-- pnpm >= 8
+
+- [Bun](https://bun.sh) >= 1.0
 
 ### Install Dependencies
 
 ```bash
-pnpm install
+bun install
 ```
 
 ## Configuration
@@ -70,17 +70,17 @@ The whitelist supports exact domain matching and wildcard patterns:
 ### Development Mode
 
 ```bash
-pnpm run dev
+bun run dev
 ```
 
 ### Production Build
 
 ```bash
 # Build the project
-pnpm run build
+bun run build
 
 # Run production version
-pnpm run start
+bun run start
 ```
 
 ## Project Structure
@@ -106,7 +106,7 @@ prism-node/
 
 ## Tech Stack
 
-- **Node.js**: Runtime environment
+- **Bun**: Runtime environment
 - **TypeScript**: Type safety
 - **Socks**: SOCKS5 client library
 - **Winston**: Logging system with daily rotation
@@ -135,13 +135,13 @@ Client -> HTTP/HTTPS Request -> Prism Node -> SOCKS5 Proxy -> Target Server
 
 ```bash
 # Format and fix code
-pnpm run fix
+bun run fix
 
 # Format only
-pnpm run format
+bun run format
 
 # Lint check
-pnpm run lint:check
+bun run lint:check
 ```
 
 ## License

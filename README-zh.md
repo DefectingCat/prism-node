@@ -21,13 +21,13 @@ Prism Node 是一个简洁而强大的代理服务器解决方案，基于 Node.
 ## 安装
 
 ### 前置要求
-- Node.js >= 18
-- pnpm >= 8
+
+- [Bun](https://bun.sh) >= 1.0
 
 ### 安装依赖
 
 ```bash
-pnpm install
+bun install
 ```
 
 ## 配置
@@ -70,17 +70,17 @@ cp config.example.json config.json
 ### 开发模式
 
 ```bash
-pnpm run dev
+bun run dev
 ```
 
 ### 生产构建
 
 ```bash
 # 构建项目
-pnpm run build
+bun run build
 
 # 运行生产版本
-pnpm run start
+bun run start
 ```
 
 ## 项目结构
@@ -106,7 +106,7 @@ prism-node/
 
 ## 技术栈
 
-- **Node.js**: 运行时环境
+- **Bun**: 运行时环境
 - **TypeScript**: 类型安全
 - **Socks**: SOCKS5 客户端库
 - **Winston**: 日志系统，支持日志轮转
@@ -135,13 +135,13 @@ prism-node/
 
 ```bash
 # 格式化和修复代码
-pnpm run fix
+bun run fix
 
 # 仅格式化
-pnpm run format
+bun run format
 
 # 仅检查 lint
-pnpm run lint:check
+bun run lint:check
 ```
 
 ## 许可证
