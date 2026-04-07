@@ -67,6 +67,16 @@ cp config.example.json config.json
 
 ## 使用说明
 
+### 生成配置
+
+```bash
+# 输出默认配置到 stdout
+bun run dev -- -g
+
+# 写入到指定文件
+bun run dev -- -g -o config.json
+```
+
 ### 开发模式
 
 ```bash

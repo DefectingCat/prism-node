@@ -67,6 +67,16 @@ The whitelist supports exact domain matching and wildcard patterns:
 
 ## Usage
 
+### Generate Configuration
+
+```bash
+# Output default config to stdout
+bun run dev -- -g
+
+# Write to specific file
+bun run dev -- -g -o config.json
+```
+
 ### Development Mode
 
 ```bash
