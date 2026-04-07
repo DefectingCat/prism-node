@@ -8,6 +8,7 @@ import {
   resetWhitelist,
 } from '../whitelist';
 
+// Note: These tests must run sequentially because they modify module-level state
 describe('whitelist', () => {
   describe('isPrivateIP', () => {
     it('should identify 10.x.x.x as private IP', () => {
@@ -111,6 +112,23 @@ describe('whitelist', () => {
       expect(isDomainInWhitelist('test.org')).toBe(true);
       expect(isDomainInWhitelist('example.net')).toBe(false);
     });
+
+    it('should filter out non-string entries', () => {
+      initializeWhitelist(['example.com', 123 as any, null as any, undefined as any, true as any]);
+      expect(isDomainInWhitelist('example.com')).toBe(true);
+      expect(isDomainInWhitelist('123')).toBe(false);
+    });
+
+    it('should filter out empty string entries', () => {
+      initializeWhitelist(['example.com', '', '   ', 'test.org']);
+      expect(isDomainInWhitelist('example.com')).toBe(true);
+      expect(isDomainInWhitelist('test.org')).toBe(true);
+    });
+
+    it('should handle whitespace-only domains', () => {
+      initializeWhitelist(['example.com', '   ']);
+      expect(isDomainInWhitelist('example.com')).toBe(true);
+    });
   });
 
   describe('isDomainInWhitelist', () => {
@@ -171,6 +189,25 @@ describe('whitelist', () => {
       resetWhitelist();
       expect(isDomainInWhitelist('example.com')).toBe(true);
       expect(isDomainInWhitelist('www.google.com')).toBe(true);
+    });
+
+    it('should reset TLD wildcards correctly', () => {
+      initializeWhitelist(['*.com', '*.org']);
+      excludeFromWhitelist('com');
+      expect(isDomainInWhitelist('example.com')).toBe(false);
+      resetWhitelist();
+      expect(isDomainInWhitelist('example.com')).toBe(true);
+      expect(isDomainInWhitelist('test.org')).toBe(true);
+    });
+
+    it('should preserve TLD wildcards after reset', () => {
+      initializeWhitelist(['*.com', '*.google.com']);
+      excludeFromWhitelist('example.com');
+      resetWhitelist();
+      // TLD wildcard *.com should still work
+      expect(isDomainInWhitelist('any.com')).toBe(true);
+      // Regular wildcard *.google.com should still work
+      expect(isDomainInWhitelist('mail.google.com')).toBe(true);
     });
   });
 });

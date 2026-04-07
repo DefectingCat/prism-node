@@ -152,5 +152,11 @@ describe('config', () => {
 
       await expect(loadConfig('config.json')).rejects.toThrow();
     });
+
+    it('should rethrow non-Error exceptions', async () => {
+      mockReadFile.mockRejectedValueOnce('string error');
+
+      await expect(loadConfig('config.json')).rejects.toBe('string error');
+    });
   });
 });
