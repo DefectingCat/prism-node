@@ -143,22 +143,28 @@ async function startMaster(configPath: string): Promise<void> {
 }
 
 /**
- * 生成默认配置文件
+ * 生成默认配置
  */
-async function generateConfig(): Promise<void> {
-  const outputPath = path.join(process.cwd(), 'config.example.json');
+async function generateConfig(outputPath?: string): Promise<void> {
   const content = JSON.stringify(DEFAULT_CONFIG, null, 2) + '\n';
-  try {
-    await fs.writeFile(outputPath, content, "utf-8");
-    console.log(`Default configuration file generated: ${outputPath}`);
-    console.log(
-      `You can edit it and rename to config.json, or use: cp ${outputPath} config.json`,
-    );
-  } catch (error) {
-    console.error(
-      `Failed to generate configuration file: ${(error as Error).message}`,
-    );
-    process.exit(1);
+
+  if (outputPath) {
+    // 输出到指定文件
+    const absolutePath = path.isAbsolute(outputPath)
+      ? outputPath
+      : path.join(process.cwd(), outputPath);
+    try {
+      await fs.writeFile(absolutePath, content, "utf-8");
+      console.log(`Configuration file generated: ${absolutePath}`);
+    } catch (error) {
+      console.error(
+        `Failed to generate configuration file: ${(error as Error).message}`,
+      );
+      process.exit(1);
+    }
+  } else {
+    // 默认输出到 stdout
+    process.stdout.write(content);
   }
 }
 
@@ -177,8 +183,13 @@ async function main(): Promise<void> {
     .option("generate-config", {
       alias: "g",
       type: "boolean",
-      description: "生成默认配置文件",
+      description: "生成默认配置（默认输出到 stdout，使用 -o 指定文件）",
       default: false,
+    })
+    .option("output", {
+      alias: "o",
+      type: "string",
+      description: "配置输出文件路径（与 -g 配合使用）",
     })
     .help()
     .alias("help", "h")
@@ -191,7 +202,7 @@ async function main(): Promise<void> {
 
   // 处理生成配置文件
   if (argv["generate-config"]) {
-    await generateConfig();
+    await generateConfig(argv.output);
     process.exit(0);
   }
 
