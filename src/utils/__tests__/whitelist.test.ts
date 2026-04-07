@@ -114,7 +114,13 @@ describe('whitelist', () => {
     });
 
     it('should filter out non-string entries', () => {
-      initializeWhitelist(['example.com', 123 as any, null as any, undefined as any, true as any]);
+      initializeWhitelist([
+        'example.com',
+        123 as any,
+        null as any,
+        undefined as any,
+        true as any,
+      ]);
       expect(isDomainInWhitelist('example.com')).toBe(true);
       expect(isDomainInWhitelist('123')).toBe(false);
     });
@@ -133,7 +139,12 @@ describe('whitelist', () => {
 
   describe('isDomainInWhitelist', () => {
     beforeEach(() => {
-      initializeWhitelist(['example.com', '*.google.com', 'localhost', '192.168.1.1']);
+      initializeWhitelist([
+        'example.com',
+        '*.google.com',
+        'localhost',
+        '192.168.1.1',
+      ]);
     });
 
     it('should match exact domains', () => {
@@ -154,7 +165,12 @@ describe('whitelist', () => {
     });
 
     it('should not match non-whitelisted domains', () => {
-      initializeWhitelist(['example.com', '*.google.com', 'localhost', '192.168.1.1']);
+      initializeWhitelist([
+        'example.com',
+        '*.google.com',
+        'localhost',
+        '192.168.1.1',
+      ]);
       expect(isDomainInWhitelist('notexample.com')).toBe(false);
       expect(isDomainInWhitelist('facebook.com')).toBe(false);
     });

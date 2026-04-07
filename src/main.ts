@@ -1,5 +1,5 @@
 import cluster from 'node:cluster';
-import * as fs from "node:fs/promises";
+import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import yargs from 'yargs';
@@ -9,10 +9,10 @@ import { startProxy } from './server/proxy-server';
 import { configureLogger, logger } from './utils/logger';
 
 const DEFAULT_CONFIG = {
-  addr: "127.0.0.1:10808",
-  socks_addr: "127.0.0.1:13659",
-  log_path: "./logs",
-  whitelist: ["example.com", "*.google.com"],
+  addr: '127.0.0.1:10808',
+  socks_addr: '127.0.0.1:13659',
+  log_path: './logs',
+  whitelist: ['example.com', '*.google.com'],
 };
 
 /**
@@ -95,7 +95,9 @@ async function startMaster(configPath: string): Promise<void> {
       if (code !== 0 || signal) {
         logger.info('Starting a new worker to replace the crashed one...');
         const newWorker = cluster.fork();
-        logger.info(`New worker ${newWorker.process.pid} forked as replacement`);
+        logger.info(
+          `New worker ${newWorker.process.pid} forked as replacement`,
+        );
       }
     });
 
@@ -154,7 +156,7 @@ async function generateConfig(outputPath?: string): Promise<void> {
       ? outputPath
       : path.join(process.cwd(), outputPath);
     try {
-      await fs.writeFile(absolutePath, content, "utf-8");
+      await fs.writeFile(absolutePath, content, 'utf-8');
       console.log(`Configuration file generated: ${absolutePath}`);
     } catch (error) {
       console.error(
@@ -174,25 +176,25 @@ async function generateConfig(outputPath?: string): Promise<void> {
 async function main(): Promise<void> {
   // 解析 CLI 参数
   const argv = await yargs(hideBin(process.argv))
-    .option("config", {
-      alias: "c",
-      type: "string",
-      description: "配置文件路径",
-      default: "config.json",
+    .option('config', {
+      alias: 'c',
+      type: 'string',
+      description: '配置文件路径',
+      default: 'config.json',
     })
-    .option("generate-config", {
-      alias: "g",
-      type: "boolean",
-      description: "生成默认配置（默认输出到 stdout，使用 -o 指定文件）",
+    .option('generate-config', {
+      alias: 'g',
+      type: 'boolean',
+      description: '生成默认配置（默认输出到 stdout，使用 -o 指定文件）',
       default: false,
     })
-    .option("output", {
-      alias: "o",
-      type: "string",
-      description: "配置输出文件路径（与 -g 配合使用）",
+    .option('output', {
+      alias: 'o',
+      type: 'string',
+      description: '配置输出文件路径（与 -g 配合使用）',
     })
     .help()
-    .alias("help", "h")
+    .alias('help', 'h')
     .parse();
 
   // 处理帮助请求 - 如果请求帮助，直接退出
@@ -201,7 +203,7 @@ async function main(): Promise<void> {
   }
 
   // 处理生成配置文件
-  if (argv["generate-config"]) {
+  if (argv['generate-config']) {
     await generateConfig(argv.output);
     process.exit(0);
   }

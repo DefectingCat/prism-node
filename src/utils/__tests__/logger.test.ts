@@ -22,7 +22,7 @@ describe('logger', () => {
     it('should add file transports when log_path is provided', () => {
       // Check if any DailyRotateFile transports already exist
       const hasExistingFileTransports = logger.transports.some(
-        (t) => t instanceof DailyRotateFile
+        (t) => t instanceof DailyRotateFile,
       );
 
       if (!hasExistingFileTransports) {

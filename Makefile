@@ -39,7 +39,7 @@ test-coverage: build
 ci: install build
 	bun run check:ci && bun run test:coverage
 
-format: install
+fmt: install
 	bun run format
 
 lint: install

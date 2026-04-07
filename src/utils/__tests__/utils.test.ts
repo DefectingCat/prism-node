@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { generateRequestId, getTimestamp, formatBytes, parseAddress } from '../utils';
+import {
+  generateRequestId,
+  getTimestamp,
+  formatBytes,
+  parseAddress,
+} from '../utils';
 
 describe('utils', () => {
   describe('generateRequestId', () => {
@@ -73,7 +78,9 @@ describe('utils', () => {
     });
 
     it('should throw on invalid address without port', () => {
-      expect(() => parseAddress('example.com')).toThrow('无效的地址格式: example.com');
+      expect(() => parseAddress('example.com')).toThrow(
+        '无效的地址格式: example.com',
+      );
     });
 
     it('should throw on invalid address with empty host', () => {
@@ -81,7 +88,9 @@ describe('utils', () => {
     });
 
     it('should throw on invalid address with non-numeric port', () => {
-      expect(() => parseAddress('example.com:abc')).toThrow('无效的地址格式: example.com:abc');
+      expect(() => parseAddress('example.com:abc')).toThrow(
+        '无效的地址格式: example.com:abc',
+      );
     });
 
     it('should throw on empty string', () => {

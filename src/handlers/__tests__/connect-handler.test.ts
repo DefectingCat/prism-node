@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type * as http from 'node:http';
-import * as net from 'node:net';
+import type * as net from 'node:net';
 import { SocksClient } from 'socks';
 import { handleConnect } from '../connect-handler';
 import type { ParsedAddress } from '../../config/types';
@@ -30,10 +30,68 @@ vi.mock('socks', () => ({
   },
 }));
 
+vi.mock('node:net', () => ({
+  createConnection: vi.fn(),
+  default: {
+    createConnection: vi.fn(),
+  },
+}));
+
+// Import mocked net after mock definition
+import { createConnection } from 'node:net';
+
+/**
+ * 创建支持动态状态的 mock socket
+ * 提供语义化 API：destroy() / end() 控制状态变化
+ */
+const createDynamicMockSocket = () => {
+  const state = { destroyed: false, writable: true };
+
+  const socket = {
+    // 动态状态访问器
+    get destroyed() {
+      return state.destroyed;
+    },
+    get writable() {
+      return state.writable;
+    },
+
+    // 方法 mock
+    write: vi.fn((_data?: unknown) => state.writable && !state.destroyed),
+    end: vi.fn(() => {
+      state.writable = false;
+    }),
+    on: vi.fn(),
+    once: vi.fn(),
+    removeAllListeners: vi.fn(),
+  };
+
+  // 语义化控制 API
+  const controls = {
+    destroy: () => {
+      state.destroyed = true;
+      state.writable = false;
+    },
+    end: () => {
+      state.writable = false;
+    },
+    get isDestroyed() {
+      return state.destroyed;
+    },
+    get isWritable() {
+      return state.writable;
+    },
+  };
+
+  return { socket, controls, state };
+};
+
 describe('connect-handler', () => {
   const mockSocksAddr: ParsedAddress = { host: '127.0.0.1', port: 1080 };
 
-  const createMockRequest = (overrides: Partial<http.IncomingMessage> = {}): http.IncomingMessage => {
+  const createMockRequest = (
+    overrides: Partial<http.IncomingMessage> = {},
+  ): http.IncomingMessage => {
     return {
       url: 'example.com:443',
       method: 'CONNECT',
@@ -108,7 +166,9 @@ describe('connect-handler', () => {
       const req = createMockRequest({ url: 'example.com:443' });
       const clientSocket = createMockSocket();
 
-      (SocksClient.createConnection as any).mockRejectedValueOnce(new Error('Connection refused'));
+      (SocksClient.createConnection as any).mockRejectedValueOnce(
+        new Error('Connection refused'),
+      );
 
       await handleConnect(req, clientSocket, Buffer.alloc(0), mockSocksAddr);
 
@@ -128,7 +188,7 @@ describe('connect-handler', () => {
 
       // Should send 200 Connection Established response
       expect(clientSocket.write).toHaveBeenCalledWith(
-        'HTTP/1.1 200 Connection Established\r\n\r\n'
+        'HTTP/1.1 200 Connection Established\r\n\r\n',
       );
     });
 
@@ -188,8 +248,82 @@ describe('connect-handler', () => {
             host: 'example.com',
             port: 8080,
           }),
-        })
+        }),
       );
+    });
+
+    // 白名单直连测试 - 需要模拟 net.createConnection 的回调行为
+    it('should call createConnection for whitelisted domain', async () => {
+      const req = createMockRequest({ url: 'whitelist.com:443' });
+      const clientSocket = createMockSocket();
+
+      const { isDomainInWhitelist } = await import('../../utils/whitelist.js');
+      (isDomainInWhitelist as any).mockReturnValueOnce(true);
+
+      // Mock net.createConnection - 返回一个 socket，并同步调用回调
+      const mockTargetSocket = createMockSocket();
+      (createConnection as any).mockImplementationOnce(
+        (_port: number, _host: string, callback: () => void) => {
+          // 同步调用回调以模拟连接建立
+          if (callback) callback();
+          return mockTargetSocket;
+        },
+      );
+
+      await handleConnect(req, clientSocket, Buffer.alloc(0), mockSocksAddr);
+
+      expect(createConnection).toHaveBeenCalledWith(
+        443,
+        'whitelist.com',
+        expect.any(Function),
+      );
+      expect(SocksClient.createConnection).not.toHaveBeenCalled();
+    });
+
+    // 动态状态测试
+    it('should not write when socket is destroyed', async () => {
+      const { socket, controls } = createDynamicMockSocket();
+
+      // Socket is writable initially
+      expect(socket.write('data')).toBe(true);
+
+      // Destroy the socket
+      controls.destroy();
+
+      // Now write should fail
+      expect(socket.write('data')).toBe(false);
+      expect(socket.destroyed).toBe(true);
+    });
+
+    it('should track state changes correctly', async () => {
+      const { socket: _socket, controls, state } = createDynamicMockSocket();
+
+      expect(state.destroyed).toBe(false);
+      expect(state.writable).toBe(true);
+
+      controls.destroy();
+
+      expect(state.destroyed).toBe(true);
+      expect(state.writable).toBe(false);
+    });
+  });
+
+  // 辅助函数测试
+  describe('safeSocketWrite behavior', () => {
+    it('should return false when socket not writable', () => {
+      const { socket, controls } = createDynamicMockSocket();
+      controls.end(); // Make not writable
+
+      const result = socket.write('test');
+      expect(result).toBe(false);
+    });
+
+    it('should return false when socket destroyed', () => {
+      const { socket, controls } = createDynamicMockSocket();
+      controls.destroy();
+
+      const result = socket.write('test');
+      expect(result).toBe(false);
     });
   });
 });
